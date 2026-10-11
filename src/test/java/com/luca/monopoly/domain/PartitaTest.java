@@ -444,11 +444,36 @@ public class PartitaTest {
 	}
 
 	@Test
-	void gestione_proprieta_vietata_durante_l_asta() {
+	void durante_l_asta_gestisce_le_proprieta_solo_chi_deve_offrire() {
 		tabellone.getCasella(39).assegnaA(luca);
 		partita.lanciaDadi(1, 2);
 		partita.rifiutaAcquisto();
-		assertThrows(MossaNonValidaException.class, () -> partita.ipoteca(39));
+
+		assertEquals(mario, partita.getGiocatoreCheGestisce());
+		assertThrows(MossaNonValidaException.class, () -> partita.ipoteca(39), "Luca non deve offrire ora");
+	}
+
+	@Test
+	void durante_l_asta_chi_offre_puo_ipotecare_per_raccogliere_denaro() {
+		tabellone.getCasella(37).assegnaA(mario);
+		tabellone.getCasella(39).assegnaA(mario);
+		conEdifici(tabellone.getCasella(39), 1);
+		conContanti(mario, 10);
+		partita.lanciaDadi(1, 2); // Luca su Vicolo Stretto
+		partita.rifiutaAcquisto();
+
+		assertThrows(MossaNonValidaException.class, () -> partita.offri(50), "solo 10€ in contanti");
+		assertThrows(MossaNonValidaException.class, () -> partita.costruisciCasetta(39), "niente spese");
+		assertThrows(MossaNonValidaException.class, () -> partita.ipoteca(39), "prima vendere la casa");
+		partita.vendiCasetta(39);
+		partita.ipoteca(37);
+		assertEquals(10 + 100 + 175, mario.getPortafoglio());
+
+		partita.offri(250);
+		partita.ritiratiDallAsta(); // Luca
+		assertEquals(mario, tabellone.getCasella(3).getProprietario());
+		assertEquals(35, mario.getPortafoglio());
+		assertEquals(FasePartita.FINE_TURNO, partita.getFase());
 	}
 
 	@Test

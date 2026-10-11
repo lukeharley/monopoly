@@ -28,8 +28,10 @@ var ANGOLI = {
     VAI_IN_PRIGIONE: ["andate", "IN PRIGIONE!", "", "15px", "#a8322a", "45deg"]
 };
 
-/* Fasi in cui il giocatore di turno può gestire le proprietà (come FASI_DI_GESTIONE in Partita.java) */
-var FASI_DI_GESTIONE = ["LANCIO_DADI", "DECISIONE_ACQUISTO", "FINE_TURNO", "SALDO_DEBITO"];
+/* Fasi in cui si possono gestire le proprietà (come FASI_DI_GESTIONE in Partita.java) */
+var FASI_DI_GESTIONE = ["LANCIO_DADI", "DECISIONE_ACQUISTO", "FINE_TURNO", "SALDO_DEBITO", "ASTA"];
+/* Fasi in cui si può solo raccogliere denaro: niente costruzioni né riscatti */
+var FASI_SENZA_SPESE = ["SALDO_DEBITO", "ASTA"];
 
 var INTERVALLO_AGGIORNAMENTO_MS = 1500;
 
@@ -734,7 +736,7 @@ function disegnaContratto() {
 
     var azioni = document.getElementById("azioni-casella");
     var motivi = [];
-    var gestibile = casella.proprietario === stato.giocatoreCorrente && FASI_DI_GESTIONE.indexOf(stato.fase) >= 0;
+    var gestibile = casella.proprietario === indiceDiChiGestisce() && FASI_DI_GESTIONE.indexOf(stato.fase) >= 0;
     if (gestibile) {
         if (casella.tipo === "TERRENO" && !casella.ipotecata) {
             var edificio = casella.casette === 4 ? "Costruisci albergo" : "Costruisci casa";
@@ -782,13 +784,25 @@ function terreniDelGruppo(casella) {
     });
 }
 
+/* Durante l'asta gestisce le proprietà chi deve offrire (come getGiocatoreCheGestisce in Partita.java) */
+function indiceDiChiGestisce() {
+    return stato.fase === "ASTA" ? stato.asta.offerenteDiTurno : stato.giocatoreCorrente;
+}
+
 function portafoglioCorrente() {
-    return stato.giocatori[stato.giocatoreCorrente].portafoglio;
+    return stato.giocatori[indiceDiChiGestisce()].portafoglio;
+}
+
+function motivoSenzaSpese() {
+    if (stato.fase === "SALDO_DEBITO") {
+        return "Mentre hai un debito da saldare puoi solo vendere edifici o ipotecare.";
+    }
+    return stato.fase === "ASTA" ? "Durante l'asta puoi solo vendere edifici o ipotecare." : "";
 }
 
 function motivoNonCostruibile(casella) {
-    if (stato.fase === "SALDO_DEBITO") {
-        return "Non puoi costruire mentre hai un debito da saldare.";
+    if (FASI_SENZA_SPESE.indexOf(stato.fase) >= 0) {
+        return motivoSenzaSpese();
     }
     var gruppo = terreniDelGruppo(casella);
     if (!possiedeTuttoIlGruppo(casella)) {
@@ -838,8 +852,8 @@ function motivoNonIpotecabile(casella) {
 }
 
 function motivoNonRiscattabile(casella) {
-    if (stato.fase === "SALDO_DEBITO") {
-        return "Non puoi riscattare ipoteche mentre hai un debito da saldare.";
+    if (FASI_SENZA_SPESE.indexOf(stato.fase) >= 0) {
+        return motivoSenzaSpese();
     }
     return portafoglioCorrente() < casella.costoRiscatto ? "Non hai abbastanza denaro." : "";
 }
