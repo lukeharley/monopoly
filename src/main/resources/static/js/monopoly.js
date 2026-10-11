@@ -1,20 +1,38 @@
 var COLORI_TERRENI = {
-    fucsia: "#c2185b",
-    azzurro: "#4fc3f7",
-    arancione: "#fb8c00",
-    marrone: "#8d5524",
-    rosso: "#e53935",
-    giallo: "#fdd835",
-    verde: "#43a047",
-    viola: "#5e35b1"
+    fucsia: "#b8336a",
+    azzurro: "#7cc0e0",
+    arancione: "#e3892b",
+    marrone: "#8a5a34",
+    rosso: "#cf3b2e",
+    giallo: "#e8c339",
+    verde: "#3f8a4f",
+    viola: "#5b3f8f"
 };
 
-var COLORI_GIOCATORI = ["#1565c0", "#c62828", "#2e7d32", "#f9a825", "#6a1b9a", "#00838f", "#ef6c00", "#4e342e"];
+/* Gruppi chiari: sulla testata del contratto serve l'inchiostro scuro */
+var TERRENI_CHIARI = ["giallo", "azzurro"];
 
-var FACCE_DADO = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+var COLORE_STAZIONE = "#2a2119";
+var COLORE_SOCIETA = "#8f846f";
+
+var COLORI_GIOCATORI = ["#2a5c9a", "#b23a30", "#3d7a46", "#c98a16", "#6b3d8f", "#2b8a8a", "#c96a26", "#5b4636"];
+
+/* Indici dei puntini accesi nella griglia 3x3 di ogni faccia del dado */
+var PUNTI_DADO = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+
+/* Testo degli angoli: [sopra, grande, sotto, dimensione, colore, rotazione] */
+var ANGOLI = {
+    VIA: ["ritirate 200€", "VIA", "← passando", "34px", "#a8322a", "-45deg"],
+    PRIGIONE: ["solo transito", "PRIGIONE", "", "17px", "#2a2119", "45deg"],
+    POSTEGGIO: ["posteggio", "GRATUITO", "", "17px", "#2a2119", "-45deg"],
+    VAI_IN_PRIGIONE: ["andate", "IN PRIGIONE!", "", "15px", "#a8322a", "45deg"]
+};
 
 var stato = null;
 var casellaSelezionata = null;
+var carteViste = null;
+var vincitoreNascosto = false;
+var dadiInLancio = false;
 
 document.addEventListener("DOMContentLoaded", function () {
     if (!document.getElementById("partita")) {
@@ -25,15 +43,23 @@ document.addEventListener("DOMContentLoaded", function () {
             invia("/terminaPartita");
         }
     });
+    document.addEventListener("keydown", function (evento) {
+        if (evento.key === "Escape" && casellaSelezionata !== null) {
+            chiudiContratto();
+        }
+    });
     fetch("/stato")
         .then(leggiRisposta)
         .then(aggiornaInterfaccia)
         .catch(mostraErrore);
 });
 
+function richiesta(url) {
+    return fetch(url, { method: "POST" }).then(leggiRisposta);
+}
+
 function invia(url) {
-    fetch(url, { method: "POST" })
-        .then(leggiRisposta)
+    richiesta(url)
         .then(aggiornaInterfaccia)
         .catch(mostraErrore);
 }
@@ -48,7 +74,9 @@ function leggiRisposta(risposta) {
 }
 
 function mostraErrore(errore) {
-    var box = document.getElementById("errore");
+    // Con il contratto aperto l'errore va mostrato lì, altrimenti resterebbe coperto
+    var box = document.getElementById(casellaSelezionata !== null ? "errore-contratto" : "errore")
+        || document.getElementById("errore");
     box.textContent = errore.message;
     box.hidden = false;
 }
@@ -59,44 +87,67 @@ function escape(testo) {
     return div.innerHTML;
 }
 
-function lanciaDadi() {
-    invia("/lanciaDadi");
+function immagineSegnalino(segnalino) {
+    return "/images/segnalini/" + segnalino.toLowerCase() + ".png";
 }
 
 function aggiornaInterfaccia(data) {
     stato = data;
     document.getElementById("errore").hidden = true;
+    if (carteViste === null) {
+        // Al primo caricamento non si ripropone una carta già letta
+        carteViste = stato.cartePescate;
+    }
 
     disegnaTabellone();
     disegnaCentro();
     disegnaGiocatori();
-    disegnaDettaglioCasella();
+    disegnaRegistro();
+    disegnaContratto();
+    disegnaCarta();
+    disegnaVincitore();
 }
 
-/* Posizione (riga, colonna) di ogni casella nella griglia 11x11 */
+/* ------------------------------------------------------------------ */
+/* Tabellone                                                           */
+/* ------------------------------------------------------------------ */
+
+/* Posizione (riga, colonna) e lato di ogni casella nella griglia 11x11 */
 function cellaDellaGriglia(posizione) {
     if (posizione <= 10) {
-        return { riga: 11, colonna: 11 - posizione };
+        return { riga: 11, colonna: 11 - posizione, lato: "b" };
     }
     if (posizione <= 20) {
-        return { riga: 11 - (posizione - 10), colonna: 1 };
+        return { riga: 11 - (posizione - 10), colonna: 1, lato: "l" };
     }
     if (posizione <= 30) {
-        return { riga: 1, colonna: 1 + (posizione - 20) };
+        return { riga: 1, colonna: 1 + (posizione - 20), lato: "t" };
     }
-    return { riga: 1 + (posizione - 30), colonna: 11 };
+    return { riga: 1 + (posizione - 30), colonna: 11, lato: "r" };
+}
+
+function isAcquistabile(casella) {
+    return casella.tipo === "TERRENO" || casella.tipo === "STAZIONE" || casella.tipo === "SOCIETA";
+}
+
+function coloreCasella(casella) {
+    if (casella.tipo === "TERRENO") {
+        return COLORI_TERRENI[casella.colore];
+    }
+    return casella.tipo === "STAZIONE" ? COLORE_STAZIONE : COLORE_SOCIETA;
 }
 
 function disegnaTabellone() {
     var tabellone = document.getElementById("tabellone");
 
     stato.caselle.forEach(function (casella) {
+        var cella = cellaDellaGriglia(casella.posizione);
+        var angolare = casella.posizione % 10 === 0;
         var elemento = document.getElementById("casella_" + casella.posizione);
         if (!elemento) {
             elemento = document.createElement("div");
             elemento.id = "casella_" + casella.posizione;
-            elemento.className = "casella";
-            var cella = cellaDellaGriglia(casella.posizione);
+            elemento.className = "casella lato-" + cella.lato + (angolare ? " angolare" : "");
             elemento.style.gridRow = cella.riga;
             elemento.style.gridColumn = cella.colonna;
             elemento.addEventListener("click", function () {
@@ -110,25 +161,33 @@ function disegnaTabellone() {
         elemento.title = casella.testo;
 
         var html = "";
-        if (casella.tipo === "TERRENO") {
-            html += '<div class="banda" style="background:' + COLORI_TERRENI[casella.colore] + '">'
-                + edifici(casella.casette) + "</div>";
+        if (angolare) {
+            html += contenutoAngolo(casella.tipo);
         } else {
-            html += '<div class="banda">' + iconaCasella(casella.tipo) + "</div>";
+            if (isAcquistabile(casella)) {
+                html += '<div class="banda" style="background:' + coloreCasella(casella) + '">'
+                    + (casella.casette > 0 ? edifici(casella.casette) : etichettaBanda(casella.tipo)) + "</div>";
+            }
+            html += '<div class="casella-corpo">'
+                + '<div class="casella-nome">' + escape(casella.testo) + "</div>"
+                + simboloCasella(casella.tipo)
+                + '<div class="casella-prezzo">' + prezzoCasella(casella) + "</div>"
+                + "</div>";
         }
-        html += '<div class="nome">' + casella.testo + "</div>";
-        if (casella.costo > 0) {
-            html += '<div class="prezzo">' + casella.costo + "€</div>";
+        if (casella.ipotecata) {
+            html += '<div class="timbro-ipoteca">IPOTECATA</div>';
         }
         if (casella.proprietario !== null) {
-            html += '<div class="proprietario" style="background:' + COLORI_GIOCATORI[casella.proprietario] + '"></div>';
+            html += '<div class="proprietario" title="' + escape(stato.giocatori[casella.proprietario].nome) + '"'
+                + ' style="background:' + COLORI_GIOCATORI[casella.proprietario] + '"></div>';
         }
 
         html += '<div class="segnalini">';
         stato.giocatori.forEach(function (giocatore, indice) {
             if (!giocatore.inBancarotta && giocatore.posizione === casella.posizione) {
-                html += '<img src="/images/segnalini/' + giocatore.segnalino.toLowerCase() + '.png"'
-                    + ' class="' + (indice === stato.giocatoreCorrente ? "corrente" : "") + '"'
+                var corrente = indice === stato.giocatoreCorrente && stato.fase !== "TERMINATA";
+                html += '<img src="' + immagineSegnalino(giocatore.segnalino) + '"'
+                    + (corrente ? ' class="corrente"' : "")
                     + ' title="' + escape(giocatore.nome) + '" alt="' + giocatore.segnalino + '">';
             }
         });
@@ -136,6 +195,15 @@ function disegnaTabellone() {
 
         elemento.innerHTML = html;
     });
+}
+
+function contenutoAngolo(tipo) {
+    var angolo = ANGOLI[tipo];
+    return '<div class="angolo"><div class="angolo-testo" style="transform:rotate(' + angolo[5] + ')">'
+        + '<div class="angolo-piccolo">' + angolo[0] + "</div>"
+        + '<div class="angolo-grande" style="font-size:' + angolo[3] + ";color:" + angolo[4] + '">' + angolo[1] + "</div>"
+        + '<div class="angolo-piccolo">' + angolo[2] + "</div>"
+        + "</div></div>";
 }
 
 function edifici(casette) {
@@ -149,45 +217,104 @@ function edifici(casette) {
     return html;
 }
 
-function iconaCasella(tipo) {
-    switch (tipo) {
-        case "VIA": return "➡️";
-        case "STAZIONE": return "🚂";
-        case "SOCIETA": return "💡";
-        case "PROBABILITA": return "❓";
-        case "IMPREVISTI": return "❗";
-        case "TASSA": return "💰";
-        case "PRIGIONE": return "🔒";
-        case "POSTEGGIO": return "🅿️";
-        case "VAI_IN_PRIGIONE": return "👮";
-        default: return "";
+function etichettaBanda(tipo) {
+    var testo = tipo === "STAZIONE" ? "FERROVIE" : tipo === "SOCIETA" ? "SERVIZI" : "";
+    return testo ? '<span class="banda-etichetta">' + testo + "</span>" : "";
+}
+
+function simboloCasella(tipo) {
+    var simboli = { IMPREVISTI: ["!", "#e07a2e"], PROBABILITA: ["?", "#3c79a8"], TASSA: ["€", "#6b5d4c"] };
+    var simbolo = simboli[tipo];
+    return simbolo ? '<div class="casella-simbolo" style="color:' + simbolo[1] + '">' + simbolo[0] + "</div>" : "";
+}
+
+function prezzoCasella(casella) {
+    if (casella.tipo === "TASSA") {
+        return "paga " + casella.costo + "€";
     }
+    return casella.costo > 0 ? casella.costo + "€" : "";
+}
+
+/* ------------------------------------------------------------------ */
+/* Centro: dadi, turno e azioni                                        */
+/* ------------------------------------------------------------------ */
+
+function disegnaDadi(faccia1, faccia2, inLancio) {
+    var rotazioni = inLancio ? ["-11deg", "9deg"] : ["-3deg", "4deg"];
+    document.getElementById("dadi").innerHTML = [faccia1, faccia2].map(function (faccia, indice) {
+        var punti = "";
+        for (var i = 0; i < 9; i++) {
+            punti += PUNTI_DADO[faccia].indexOf(i) >= 0 ? '<span class="punto"></span>' : "<span></span>";
+        }
+        return '<div class="dado" style="transform:rotate(' + rotazioni[indice] + ')">' + punti + "</div>";
+    }).join("");
+}
+
+function lanciaDadi() {
+    if (dadiInLancio) {
+        return;
+    }
+    dadiInLancio = true;
+    disegnaCentro();
+
+    // I dadi rotolano per qualche fotogramma mentre il server decide il risultato
+    var fotogrammi = 0;
+    var animazione = new Promise(function (fine) {
+        var intervallo = setInterval(function () {
+            disegnaDadi(facciaCasuale(), facciaCasuale(), true);
+            if (++fotogrammi >= 7) {
+                clearInterval(intervallo);
+                fine();
+            }
+        }, 60);
+    });
+
+    Promise.all([richiesta("/lanciaDadi"), animazione])
+        .then(function (risultati) {
+            dadiInLancio = false;
+            aggiornaInterfaccia(risultati[0]);
+        })
+        .catch(function (errore) {
+            dadiInLancio = false;
+            disegnaCentro();
+            mostraErrore(errore);
+        });
+}
+
+function facciaCasuale() {
+    return 1 + Math.floor(Math.random() * 6);
 }
 
 function disegnaCentro() {
+    var terminata = stato.fase === "TERMINATA";
     var giocatore = stato.giocatori[stato.giocatoreCorrente];
+    var vincitore = terminata && stato.vincitore !== null ? stato.giocatori[stato.vincitore] : null;
+    var protagonista = vincitore || giocatore;
     var casellaCorrente = stato.caselle[giocatore.posizione];
 
-    document.getElementById("dadi").textContent = stato.dado1 > 0
-        ? FACCE_DADO[stato.dado1] + " " + FACCE_DADO[stato.dado2]
-        : FACCE_DADO[6] + " " + FACCE_DADO[6];
-
-    var turno = document.getElementById("turno");
-    if (stato.fase === "TERMINATA") {
-        var vincitore = stato.giocatori[stato.vincitore];
-        turno.innerHTML = "🏆 " + escape(vincitore.nome) + " ha vinto la partita!";
-    } else {
-        turno.innerHTML = 'Turno di <span style="color:' + COLORI_GIOCATORI[stato.giocatoreCorrente] + '">'
-            + escape(giocatore.nome) + "</span>" + (giocatore.inPrigione ? " (in prigione)" : "");
+    if (!dadiInLancio) {
+        disegnaDadi(stato.dado1 || 6, stato.dado2 || 6, false);
     }
 
-    var carta = document.getElementById("carta");
-    if (stato.ultimaCarta) {
-        carta.innerHTML = "<b>" + stato.ultimaCarta.mazzo + "</b><br>" + stato.ultimaCarta.testo;
-        carta.hidden = false;
-    } else {
-        carta.hidden = true;
+    document.getElementById("turno-segnalino").src = immagineSegnalino(protagonista.segnalino);
+    var colore = COLORI_GIOCATORI[vincitore ? stato.vincitore : stato.giocatoreCorrente];
+    document.getElementById("turno").innerHTML = vincitore
+        ? '<span style="color:' + colore + '">' + escape(vincitore.nome) + "</span> ha vinto!"
+        : 'Turno di <span style="color:' + colore + '">' + escape(giocatore.nome) + "</span>";
+
+    var testoStato = "";
+    if (!terminata) {
+        if (giocatore.inPrigione) {
+            testoStato = "In prigione · tentativo " + (giocatore.turniInPrigione + 1) + " di 3 · multa " + stato.multaPrigione + "€";
+        } else if (stato.fase === "DECISIONE_ACQUISTO") {
+            testoStato = casellaCorrente.testo + " è libera. La compri?";
+        } else if (stato.fase === "LANCIO_DADI" && /lancia di nuovo/.test(ultimoEvento())) {
+            testoStato = "Doppio! Lancia di nuovo.";
+        }
     }
+    var turnoStato = document.getElementById("turno-stato");
+    turnoStato.textContent = testoStato;
+    turnoStato.hidden = !testoStato;
 
     var azioni = document.getElementById("azioni");
     azioni.innerHTML = "";
@@ -195,49 +322,44 @@ function disegnaCentro() {
     switch (stato.fase) {
         case "LANCIO_DADI":
             if (giocatore.inPrigione) {
-                aggiungiPulsante(azioni, "Paga " + stato.multaPrigione + "€ ed esci", "btn-warning",
-                    function () { invia("/pagaUscitaDiPrigione"); }, giocatore.portafoglio < stato.multaPrigione);
+                aggiungiPulsante(azioni, "Paga " + stato.multaPrigione + "€ ed esci", "btn-oro",
+                    function () { invia("/pagaUscitaDiPrigione"); }, giocatore.portafoglio < stato.multaPrigione || dadiInLancio);
                 if (giocatore.carteUscitaDiPrigione > 0) {
-                    aggiungiPulsante(azioni, "Usa carta \"Uscite gratis\"", "btn-warning",
-                        function () { invia("/usaCartaUscitaDiPrigione"); });
+                    aggiungiPulsante(azioni, "Usa carta «Uscite gratis»", "btn-oro",
+                        function () { invia("/usaCartaUscitaDiPrigione"); }, dadiInLancio);
                 }
-                aggiungiPulsante(azioni, "Tenta il doppio 🎲 (" + (giocatore.turniInPrigione + 1) + "/3)", "btn-success", lanciaDadi);
+                aggiungiPulsante(azioni, "Tenta il doppio (" + (giocatore.turniInPrigione + 1) + "/3)", "btn-verde",
+                    lanciaDadi, dadiInLancio);
             } else {
-                aggiungiPulsante(azioni, "Lancia dadi 🎲", "btn-success", lanciaDadi);
+                aggiungiPulsante(azioni, "Lancia i dadi", "btn-verde", lanciaDadi, dadiInLancio);
             }
             break;
         case "DECISIONE_ACQUISTO":
-            aggiungiPulsante(azioni, "Compra " + casellaCorrente.testo + " (" + casellaCorrente.costo + "€)", "btn-primary",
+            aggiungiPulsante(azioni, "Compra per " + casellaCorrente.costo + "€", "btn-rosso",
                 function () { invia("/compraProprieta"); }, giocatore.portafoglio < casellaCorrente.costo);
-            aggiungiPulsante(azioni, "Non comprare", "btn-outline-secondary",
+            aggiungiPulsante(azioni, "Non comprare", "",
                 function () { invia("/rifiutaAcquisto"); });
             break;
         case "FINE_TURNO":
-            aggiungiPulsante(azioni, "Fine turno ➡️", "btn-primary", function () { invia("/fineTurno"); });
+            aggiungiPulsante(azioni, "Fine turno →", "btn-rosso", function () { invia("/fineTurno"); });
             break;
         case "TERMINATA":
-            var nuova = document.createElement("a");
-            nuova.className = "btn btn-success";
-            nuova.href = "/resettaPartita";
-            nuova.textContent = "Nuova partita";
-            azioni.appendChild(nuova);
-            document.getElementById("termina-button").disabled = true;
+            azioni.appendChild(formNuovaPartita("btn-verde"));
             break;
     }
 
-    var eventi = document.getElementById("eventi");
-    eventi.innerHTML = "";
-    stato.eventi.slice().reverse().forEach(function (evento) {
-        var li = document.createElement("li");
-        li.textContent = evento;
-        eventi.appendChild(li);
-    });
+    document.getElementById("termina-button").disabled = terminata;
+    document.getElementById("ultimo-evento").textContent = ultimoEvento();
+}
+
+function ultimoEvento() {
+    return stato.eventi.length > 0 ? stato.eventi[stato.eventi.length - 1] : "";
 }
 
 function aggiungiPulsante(contenitore, testo, classe, azione, disabilitato) {
     var pulsante = document.createElement("button");
     pulsante.type = "button";
-    pulsante.className = "btn btn-sm " + classe;
+    pulsante.className = "btn " + classe;
     pulsante.textContent = testo;
     pulsante.disabled = !!disabilitato;
     pulsante.addEventListener("click", azione);
@@ -245,107 +367,301 @@ function aggiungiPulsante(contenitore, testo, classe, azione, disabilitato) {
     return pulsante;
 }
 
+/* "Nuova partita" tiene al tavolo gli stessi giocatori e torna al setup */
+function formNuovaPartita(classe) {
+    var form = document.createElement("form");
+    form.method = "post";
+    form.action = "/nuovaPartita";
+    form.innerHTML = '<button type="submit" class="btn ' + classe + '">Nuova partita</button>';
+    return form;
+}
+
+/* ------------------------------------------------------------------ */
+/* Barra laterale: giocatori e registro                                */
+/* ------------------------------------------------------------------ */
+
 function disegnaGiocatori() {
     var contenitore = document.getElementById("giocatori");
     contenitore.innerHTML = "";
 
     stato.giocatori.forEach(function (giocatore, indice) {
+        var corrente = indice === stato.giocatoreCorrente && stato.fase !== "TERMINATA";
         var card = document.createElement("div");
-        card.className = "card giocatore-card mb-2"
-            + (indice === stato.giocatoreCorrente && stato.fase !== "TERMINATA" ? " corrente" : "")
-            + (giocatore.inBancarotta ? " bancarotta" : "");
-        card.style.borderLeftColor = COLORI_GIOCATORI[indice];
+        card.className = "giocatore" + (corrente ? " corrente" : "") + (giocatore.inBancarotta ? " bancarotta" : "");
 
         var stati = [];
-        if (giocatore.inBancarotta) stati.push("💀 in bancarotta");
-        if (giocatore.inPrigione) stati.push("🔒 in prigione");
-        if (giocatore.carteUscitaDiPrigione > 0) stati.push("🎫 " + giocatore.carteUscitaDiPrigione + " carta uscita gratis");
+        if (giocatore.inBancarotta) stati.push("In bancarotta");
+        if (giocatore.inPrigione) stati.push("In prigione");
+        if (giocatore.carteUscitaDiPrigione > 0) stati.push(giocatore.carteUscitaDiPrigione + " carta «Uscite gratis»");
 
-        var html = '<div class="card-body p-2">'
-            + '<div class="d-flex align-items-center gap-2">'
-            + '<img src="/images/segnalini/' + giocatore.segnalino.toLowerCase() + '.png" alt="">'
-            + "<div><b>" + escape(giocatore.nome) + "</b> <small class=\"text-muted\">(" + giocatore.segnalino + ")</small><br>"
-            + "💶 <b>" + giocatore.portafoglio + "€</b> · patrimonio " + giocatore.patrimonio + "€</div></div>";
+        var html = '<img src="' + immagineSegnalino(giocatore.segnalino) + '" alt="">'
+            + '<div class="giocatore-info">'
+            + '<div class="giocatore-riga">'
+            + '<div class="giocatore-colore" style="background:' + COLORI_GIOCATORI[indice] + '"></div>'
+            + '<div class="giocatore-nome">' + escape(giocatore.nome) + "</div>"
+            + '<div class="giocatore-segnalino">' + giocatore.segnalino + "</div>"
+            + (corrente ? '<div class="badge-turno">TURNO</div>' : "")
+            + "</div>"
+            + '<div class="giocatore-soldi">'
+            + '<div class="giocatore-portafoglio">' + giocatore.portafoglio + "€</div>"
+            + '<div class="giocatore-patrimonio">patrimonio ' + giocatore.patrimonio + "€</div>"
+            + "</div>";
         if (stati.length > 0) {
-            html += '<div class="small mt-1">' + stati.join(" · ") + "</div>";
+            html += '<div class="giocatore-stato">' + stati.join(" · ") + "</div>";
         }
-        html += '<div class="proprieta-giocatore"></div></div>';
+        html += '<div class="giocatore-proprieta"></div></div>';
         card.innerHTML = html;
 
-        var elencoProprieta = card.querySelector(".proprieta-giocatore");
+        var elencoProprieta = card.querySelector(".giocatore-proprieta");
         stato.caselle.forEach(function (casella) {
             if (casella.proprietario === indice) {
                 var etichetta = document.createElement("span");
-                etichetta.textContent = casella.testo + (casella.ipotecata ? " (ipotecata)" : "");
-                etichetta.style.background = casella.colore ? COLORI_TERRENI[casella.colore] : "#555";
+                etichetta.title = casella.testo + (casella.ipotecata ? " (ipotecata)" : "")
+                    + (casella.casette > 0 ? " · " + (casella.casette === 5 ? "albergo" : casella.casette + " case") : "");
+                etichetta.style.background = coloreCasella(casella);
+                etichetta.classList.toggle("ipotecata", casella.ipotecata);
                 etichetta.addEventListener("click", function () {
                     selezionaCasella(casella.posizione);
                 });
                 elencoProprieta.appendChild(etichetta);
             }
         });
+        elencoProprieta.hidden = elencoProprieta.children.length === 0;
 
         contenitore.appendChild(card);
     });
 }
 
+function disegnaRegistro() {
+    var eventi = document.getElementById("eventi");
+    eventi.innerHTML = "";
+    stato.eventi.slice().reverse().forEach(function (evento) {
+        var riga = document.createElement("div");
+        riga.textContent = evento;
+        eventi.appendChild(riga);
+    });
+}
+
+/* ------------------------------------------------------------------ */
+/* Contratto di proprietà                                              */
+/* ------------------------------------------------------------------ */
+
 function selezionaCasella(posizione) {
     casellaSelezionata = posizione;
     disegnaTabellone();
-    disegnaDettaglioCasella();
+    disegnaContratto();
 }
 
-function disegnaDettaglioCasella() {
+function chiudiContratto() {
+    casellaSelezionata = null;
+    disegnaTabellone();
+    disegnaContratto();
+}
+
+function possiedeTuttoIlGruppo(casella) {
+    return stato.caselle.every(function (altra) {
+        return altra.colore !== casella.colore || altra.proprietario === casella.proprietario;
+    });
+}
+
+function contaStazioni(proprietario) {
+    return stato.caselle.filter(function (altra) {
+        return altra.tipo === "STAZIONE" && altra.proprietario === proprietario;
+    }).length;
+}
+
+function rigaContratto(etichetta, valore, attuale, separata) {
+    return '<div class="contratto-riga' + (attuale ? " attuale" : "") + (separata ? " separata" : "") + '">'
+        + "<span>" + etichetta + "</span><span>" + valore + "</span></div>";
+}
+
+function righeContratto(casella) {
+    var posseduta = casella.proprietario !== null;
+    var rendite = casella.rendite;
+
+    if (casella.tipo === "TERRENO") {
+        var casette = posseduta ? casella.casette : -1;
+        var gruppo = posseduta && possiedeTuttoIlGruppo(casella);
+        return rigaContratto("Affitto", rendite[0] + "€", casette === 0 && !gruppo)
+            + rigaContratto("Con il gruppo completo", rendite[1] + "€", casette === 0 && gruppo)
+            + rigaContratto("Con 1 casa", rendite[2] + "€", casette === 1)
+            + rigaContratto("Con 2 case", rendite[3] + "€", casette === 2)
+            + rigaContratto("Con 3 case", rendite[4] + "€", casette === 3)
+            + rigaContratto("Con 4 case", rendite[5] + "€", casette === 4)
+            + rigaContratto("Con albergo", rendite[6] + "€", casette === 5)
+            + rigaContratto("Prezzo", casella.costo + "€", false, true)
+            + rigaContratto("Costo di una casa", casella.costoCasetta + "€")
+            + rigaContratto("Valore ipotecario", casella.valoreIpotecario + "€");
+    }
+    if (casella.tipo === "STAZIONE") {
+        var stazioni = posseduta ? contaStazioni(casella.proprietario) : 0;
+        return rigaContratto("Affitto", rendite[0] + "€", stazioni === 1)
+            + rigaContratto("Con 2 stazioni", rendite[1] + "€", stazioni === 2)
+            + rigaContratto("Con 3 stazioni", rendite[2] + "€", stazioni === 3)
+            + rigaContratto("Con 4 stazioni", rendite[3] + "€", stazioni === 4)
+            + rigaContratto("Prezzo", casella.costo + "€", false, true)
+            + rigaContratto("Valore ipotecario", casella.valoreIpotecario + "€");
+    }
+    if (casella.tipo === "SOCIETA") {
+        return rigaContratto("Con una società", "4 × dadi")
+            + rigaContratto("Con entrambe", "10 × dadi")
+            + rigaContratto("Prezzo", casella.costo + "€", false, true)
+            + rigaContratto("Valore ipotecario", casella.valoreIpotecario + "€");
+    }
+    var descrizioni = {
+        VIA: ["Passando dal Via", "+200€"],
+        PRIGIONE: ["Multa per uscire", stato.multaPrigione + "€"],
+        POSTEGGIO: ["Sosta libera", "—"],
+        VAI_IN_PRIGIONE: ["Andate dritti in prigione", "—"],
+        TASSA: ["Da pagare alla banca", casella.costo + "€"],
+        IMPREVISTI: ["Pescate una carta", "Imprevisti"],
+        PROBABILITA: ["Pescate una carta", "Probabilità"]
+    };
+    var descrizione = descrizioni[casella.tipo];
+    return rigaContratto(descrizione[0], descrizione[1]);
+}
+
+function disegnaContratto() {
+    var velo = document.getElementById("contratto");
     if (casellaSelezionata === null) {
+        velo.hidden = true;
+        velo.innerHTML = "";
         return;
     }
     var casella = stato.caselle[casellaSelezionata];
-    var contenitore = document.getElementById("dettaglio-casella");
+    var acquistabile = isAcquistabile(casella);
+    var proprietario = casella.proprietario === null ? null : stato.giocatori[casella.proprietario];
 
-    var html = '<div class="card-header fw-bold" style="'
-        + (casella.colore ? "background:" + COLORI_TERRENI[casella.colore] + ";color:#fff;text-shadow:0 0 3px #000" : "")
-        + '">' + casella.testo + "</div><div class=\"card-body p-2 small\">";
-
-    if (casella.tipo === "TERRENO" || casella.tipo === "STAZIONE" || casella.tipo === "SOCIETA") {
-        var proprietario = casella.proprietario === null ? "nessuno (della banca)" : escape(stato.giocatori[casella.proprietario].nome);
-        html += "Prezzo: <b>" + casella.costo + "€</b><br>"
-            + "Proprietario: <b>" + proprietario + "</b><br>"
-            + "Valore ipotecario: " + casella.valoreIpotecario + "€ (riscatto " + casella.costoRiscatto + "€)<br>";
-        if (casella.tipo === "TERRENO") {
-            html += "Costo di una casa: " + casella.costoCasetta + "€<br>"
-                + "Edifici: " + (casella.casette === 5 ? "1 albergo" : casella.casette + " case") + "<br>";
-        }
-        if (casella.tipo === "SOCIETA") {
-            html += "Affitto: 4 volte i dadi (10 volte con entrambe le società)<br>";
-        } else if (casella.proprietario !== null) {
-            html += "Affitto attuale: <b>" + casella.affitto + "€</b><br>";
-        }
-        if (casella.ipotecata) {
-            html += '<span class="text-danger">Proprietà ipotecata: non rende affitto.</span><br>';
-        }
-    } else if (casella.tipo === "TASSA") {
-        html += "Si pagano " + casella.costo + "€ alla banca.";
-    } else {
-        html += "Casella speciale.";
+    var testata = "#ece1c5";
+    var inchiostro = "#2a2119";
+    if (acquistabile) {
+        testata = coloreCasella(casella);
+        inchiostro = casella.tipo === "TERRENO" && TERRENI_CHIARI.indexOf(casella.colore) >= 0 ? "#2a2119" : "#fbf6e9";
     }
-    html += '<div class="d-flex flex-wrap gap-1 mt-2" id="azioni-casella"></div></div>';
-    contenitore.innerHTML = html;
 
+    var nota = "";
+    if (casella.ipotecata) {
+        nota = "Proprietà ipotecata: non rende affitto.";
+    } else if (casella.tipo === "TERRENO" && casella.casette > 0) {
+        nota = "Edifici: " + (casella.casette === 5 ? "1 albergo" : casella.casette + (casella.casette === 1 ? " casa" : " case"));
+    }
+
+    var html = '<div class="contratto">'
+        + '<button type="button" class="contratto-chiudi" title="Chiudi">×</button>'
+        + '<div class="contratto-testata" style="background:' + testata + ";color:" + inchiostro + '">'
+        + '<div class="contratto-tipo">' + (acquistabile ? "Contratto di proprietà" : "Casella speciale") + "</div>"
+        + '<div class="contratto-nome">' + escape(casella.testo) + "</div>"
+        + "</div>"
+        + '<div class="contratto-righe">' + righeContratto(casella) + "</div>"
+        + '<div class="contratto-proprietario">'
+        + (proprietario ? '<img src="' + immagineSegnalino(proprietario.segnalino) + '" alt="">' : "")
+        + "<span>Proprietario: <b>"
+        + (!acquistabile ? "—" : proprietario ? escape(proprietario.nome) : "nessuno (della banca)")
+        + "</b></span></div>"
+        + (nota ? '<div class="contratto-nota">' + nota + "</div>" : "")
+        + '<div id="errore-contratto" class="contratto-nota" hidden></div>'
+        + '<div class="contratto-azioni" id="azioni-casella"></div>'
+        + "</div>";
+    velo.innerHTML = html;
+    velo.hidden = false;
+
+    velo.onclick = function (evento) {
+        if (evento.target === velo) {
+            chiudiContratto();
+        }
+    };
+    velo.querySelector(".contratto-chiudi").addEventListener("click", chiudiContratto);
+
+    var azioni = document.getElementById("azioni-casella");
     var possedutaDalGiocatoreDiTurno = casella.proprietario === stato.giocatoreCorrente && stato.fase !== "TERMINATA";
     if (possedutaDalGiocatoreDiTurno) {
-        var azioni = document.getElementById("azioni-casella");
+        var portafoglio = stato.giocatori[stato.giocatoreCorrente].portafoglio;
         if (casella.tipo === "TERRENO" && !casella.ipotecata) {
-            aggiungiPulsante(azioni, casella.casette === 4 ? "Costruisci albergo" : "Costruisci casa", "btn-success",
-                function () { invia("/costruisciCasetta/" + casella.posizione); }, casella.casette === 5);
-            aggiungiPulsante(azioni, "Vendi edificio", "btn-outline-success",
+            var edificio = casella.casette === 4 ? "Costruisci albergo" : "Costruisci casa";
+            aggiungiPulsante(azioni, edificio + " (" + casella.costoCasetta + "€)", "btn-verde btn-piccolo",
+                function () { invia("/costruisciCasetta/" + casella.posizione); },
+                casella.casette === 5 || portafoglio < casella.costoCasetta);
+            aggiungiPulsante(azioni, "Vendi edificio", "btn-piccolo",
                 function () { invia("/vendiCasetta/" + casella.posizione); }, casella.casette === 0);
         }
         if (casella.ipotecata) {
-            aggiungiPulsante(azioni, "Riscatta ipoteca (" + casella.costoRiscatto + "€)", "btn-warning",
-                function () { invia("/riscattaIpoteca/" + casella.posizione); });
+            aggiungiPulsante(azioni, "Riscatta ipoteca (" + casella.costoRiscatto + "€)", "btn-oro btn-piccolo",
+                function () { invia("/riscattaIpoteca/" + casella.posizione); }, portafoglio < casella.costoRiscatto);
         } else {
-            aggiungiPulsante(azioni, "Ipoteca (+" + casella.valoreIpotecario + "€)", "btn-outline-warning",
-                function () { invia("/ipoteca/" + casella.posizione); });
+            aggiungiPulsante(azioni, "Ipoteca (+" + casella.valoreIpotecario + "€)", "btn-oro btn-piccolo",
+                function () { invia("/ipoteca/" + casella.posizione); }, casella.tipo === "TERRENO" && casella.casette > 0);
         }
     }
+    azioni.hidden = azioni.children.length === 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Carta Imprevisti / Probabilità                                      */
+/* ------------------------------------------------------------------ */
+
+function disegnaCarta() {
+    var velo = document.getElementById("carta");
+    if (!stato.ultimaCarta || stato.cartePescate <= carteViste) {
+        velo.hidden = true;
+        return;
+    }
+    var imprevisti = stato.ultimaCarta.mazzo === "Imprevisti";
+    velo.innerHTML = '<div class="carta ' + (imprevisti ? "imprevisti" : "probabilita") + '">'
+        + '<div class="carta-interno">'
+        + '<div class="carta-mazzo"><div class="carta-simbolo">' + (imprevisti ? "!" : "?") + "</div>"
+        + "<div>" + stato.ultimaCarta.mazzo + "</div></div>"
+        + '<div class="carta-testo">' + escape(stato.ultimaCarta.testo) + "</div>"
+        + '<button type="button" class="btn btn-scuro">Continua</button>'
+        + "</div></div>";
+    velo.hidden = false;
+    velo.querySelector("button").addEventListener("click", function () {
+        carteViste = stato.cartePescate;
+        velo.hidden = true;
+    });
+}
+
+/* ------------------------------------------------------------------ */
+/* Fine partita                                                        */
+/* ------------------------------------------------------------------ */
+
+function disegnaVincitore() {
+    var velo = document.getElementById("vincitore");
+    if (stato.fase !== "TERMINATA" || stato.vincitore === null || vincitoreNascosto) {
+        velo.hidden = true;
+        return;
+    }
+    var vincitore = stato.giocatori[stato.vincitore];
+
+    var classifica = stato.giocatori
+        .map(function (giocatore, indice) { return { giocatore: giocatore, indice: indice }; })
+        .sort(function (a, b) {
+            return (b.indice === stato.vincitore) - (a.indice === stato.vincitore)
+                || b.giocatore.patrimonio - a.giocatore.patrimonio;
+        })
+        .map(function (voce, posizione) {
+            var giocatore = voce.giocatore;
+            return '<div class="classifica-riga' + (giocatore.inBancarotta ? " bancarotta" : "") + '">'
+                + '<div class="classifica-posizione">' + (posizione + 1) + "</div>"
+                + '<img src="' + immagineSegnalino(giocatore.segnalino) + '" alt="">'
+                + '<div class="classifica-nome">' + escape(giocatore.nome) + "</div>"
+                + '<div class="classifica-valore">' + (giocatore.inBancarotta ? "bancarotta" : giocatore.patrimonio + "€") + "</div>"
+                + "</div>";
+        }).join("");
+
+    velo.innerHTML = '<div class="vincitore">'
+        + '<div class="etichetta">Partita terminata</div>'
+        + '<div class="vincitore-medaglia"><img src="' + immagineSegnalino(vincitore.segnalino) + '" alt=""></div>'
+        + '<div class="vincitore-titolo">' + escape(vincitore.nome) + " ha vinto la partita!</div>"
+        + '<div class="vincitore-patrimonio">Patrimonio finale <b>' + vincitore.patrimonio + "€</b></div>"
+        + '<div class="classifica">' + classifica + "</div>"
+        + '<div class="vincitore-azioni"></div>'
+        + "</div>";
+
+    var azioni = velo.querySelector(".vincitore-azioni");
+    azioni.appendChild(formNuovaPartita("btn-rosso"));
+    aggiungiPulsante(azioni, "Guarda il tabellone", "btn-vuoto", function () {
+        vincitoreNascosto = true;
+        velo.hidden = true;
+    });
+    velo.hidden = false;
 }

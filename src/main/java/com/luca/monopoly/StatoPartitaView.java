@@ -1,6 +1,7 @@
 package com.luca.monopoly;
 
 import com.luca.monopoly.domain.Casella;
+import com.luca.monopoly.domain.Contratto;
 import com.luca.monopoly.domain.Imprevisto;
 import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.domain.giocatore.Giocatore;
@@ -18,6 +19,8 @@ public record StatoPartitaView(
         int giocatoreCorrente,
         Integer vincitore,
         CartaView ultimaCarta,
+        int cartePescate,
+        int portafoglioIniziale,
         int casetteDisponibili,
         int alberghiDisponibili,
         int multaPrigione,
@@ -32,7 +35,7 @@ public record StatoPartitaView(
 
     public record CasellaView(int posizione, String testo, String tipo, String colore, int costo,
             int costoCasetta, int casette, Integer proprietario, boolean ipotecata, int affitto,
-            int valoreIpotecario, int costoRiscatto) {
+            int valoreIpotecario, int costoRiscatto, List<Integer> rendite) {
     }
 
     public record CartaView(String mazzo, String testo) {
@@ -58,7 +61,8 @@ public record StatoPartitaView(
             caselleView.add(new CasellaView(posizione, casella.getTesto(), casella.getTipo().name(),
                     casella.getColore(), casella.getCostoProprieta(), casella.getCostoCasetta(),
                     casella.getNumeroDiCasetteSullaCasella(), proprietario, casella.isIpotecata(),
-                    partita.calcolaAffitto(casella), casella.getValoreIpotecario(), casella.getCostoRiscatto()));
+                    partita.calcolaAffitto(casella), casella.getValoreIpotecario(), casella.getCostoRiscatto(),
+                    rendite(casella, partita.getTabellone().getContratto(posizione))));
         }
 
         CartaView ultimaCarta = partita.getUltimaCartaPescata() == null ? null
@@ -69,7 +73,27 @@ public record StatoPartitaView(
 
         return new StatoPartitaView(partita.getFase().name(), partita.getDado1(), partita.getDado2(),
                 giocatori.indexOf(partita.getGiocatoreCorrente()), vincitore, ultimaCarta,
+                partita.getCartePescate(), Partita.PORTAFOGLIO_INIZIALE,
                 partita.getCasetteDisponibili(), partita.getAlberghiDisponibili(), Partita.MULTA_PRIGIONE,
                 giocatoriView, caselleView, new ArrayList<>(partita.getEventi()));
+    }
+
+    /**
+     * Tabella degli affitti del contratto. Terreno: nudo, gruppo completo, 1-4 case, albergo.
+     * Stazione: con 1, 2, 3 e 4 stazioni possedute.
+     */
+    private static List<Integer> rendite(Casella casella, Contratto contratto) {
+        switch (casella.getTipo()) {
+            case TERRENO:
+                return List.of(contratto.getRenditaTerreno(), contratto.getRenditaTerreno() * 2,
+                        contratto.getRenditaUnaCasetta(), contratto.getRenditaDueCasette(),
+                        contratto.getRenditaTreCasette(), contratto.getRenditaQuattroCasette(),
+                        contratto.getRenditaAlbergo());
+            case STAZIONE:
+                return List.of(contratto.getTassa(), contratto.getTassa() << 1, contratto.getTassa() << 2,
+                        contratto.getTassa() << 3);
+            default:
+                return List.of();
+        }
     }
 }

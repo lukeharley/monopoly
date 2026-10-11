@@ -50,6 +50,22 @@ public class GiocatoreService {
         }
     }
 
+    public void rimuoviGiocatore(Segnalini segnalino) {
+        JpaGiocatore jpaGiocatore = jpaGiocatoreRepository.findBySegnalino(segnalino);
+        if (jpaGiocatore != null) {
+            jpaGiocatoreRepository.delete(jpaGiocatore);
+        }
+    }
+
+    /** Riporta i giocatori registrati al portafoglio e alla posizione di partenza. */
+    public void azzeraGiocatori() {
+        for (JpaGiocatore jpaGiocatore : jpaGiocatoreRepository.findAll()) {
+            jpaGiocatore.setPortafoglio(Partita.PORTAFOGLIO_INIZIALE);
+            jpaGiocatore.setPosizione(0);
+            jpaGiocatoreRepository.save(jpaGiocatore);
+        }
+    }
+
     public void eliminaGiocatori() {
 
         jpaGiocatoreRepository.deleteAll();

@@ -4,6 +4,7 @@ import com.luca.monopoly.domain.FasePartita;
 import com.luca.monopoly.domain.Monopoly;
 import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.Partita;
+import com.luca.monopoly.domain.Segnalini;
 import com.luca.monopoly.domain.giocatore.Giocatore;
 import com.luca.monopoly.repository.JpaGiocatore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,20 @@ public class MonopolyService {
         mossa.accept(partita);
         giocatoreService.salvaStato(partita.getGiocatori());
         return partita;
+    }
+
+    /** Chiude la partita ma tiene al tavolo gli stessi giocatori, pronti per una nuova. */
+    public synchronized void nuovaPartita() {
+        partita = null;
+        giocatoreService.azzeraGiocatori();
+    }
+
+    public synchronized void rimuoviGiocatore(Segnalini segnalino) {
+        if (partita != null) {
+            throw new MossaNonValidaException(
+                    "La partita è già iniziata: resettala per togliere giocatori dal tavolo.");
+        }
+        giocatoreService.rimuoviGiocatore(segnalino);
     }
 
     public synchronized void resettaPartita() {

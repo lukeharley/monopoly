@@ -43,6 +43,7 @@ public class Partita {
 	private int casetteDisponibili;
 	private int alberghiDisponibili;
 	private Carta ultimaCartaPescata;
+	private int cartePescate;
 	private Giocatore vincitore;
 
 	public Partita(List<Giocatore> giocatori) {
@@ -364,6 +365,7 @@ public class Partita {
 
 	private void applicaCarta(Giocatore giocatore, Carta carta) {
 		ultimaCartaPescata = carta;
+		cartePescate++;
 		String mazzo = carta instanceof Imprevisto ? "Imprevisti" : "Probabilità";
 		registra(giocatore.getNome() + " pesca una carta " + mazzo + ": \"" + carta.getTesto() + "\"");
 
@@ -692,6 +694,11 @@ public class Partita {
 
 	public Carta getUltimaCartaPescata() {
 		return ultimaCartaPescata;
+	}
+
+	/** Numero di carte pescate dall'inizio della partita: l'interfaccia lo usa per mostrare ogni carta una volta sola. */
+	public int getCartePescate() {
+		return cartePescate;
 	}
 
 	public Giocatore getVincitore() {
