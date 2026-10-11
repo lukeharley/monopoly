@@ -11,6 +11,30 @@ gestisce le proprie proprietà cliccando le caselle del tabellone (case, albergh
 
 Test: `mvn test`
 
+## Interfaccia
+
+Stile "Tavolo": panno verde, tabellone color crema, titoli in serif. Pensata per schermi desktop (il tabellone non scende sotto 720px).
+
+**Setup giocatori**: nome, scelta del segnalino tra quelli liberi, posti al tavolo con il pulsante × per togliere un giocatore.
+
+![Setup giocatori](docs/screenshots/setup.png)
+
+**Partita in corso**: tabellone con case, alberghi, pallino del proprietario e ipoteche; dadi, turno e azioni al centro;
+giocatori e registro della partita nella barra laterale.
+
+![Partita in corso](docs/screenshots/partita.png)
+
+**Contratto di proprietà**: si apre cliccando una casella. Mostra la tabella degli affitti con l'affitto attuale evidenziato;
+le azioni non consentite (costruire senza il gruppo completo, vendere in modo non uniforme...) restano disattivate e il motivo compare sotto.
+
+![Contratto di proprietà](docs/screenshots/contratto.png)
+
+**Carte Imprevisti e Probabilità** e **fine partita** con la classifica.
+
+![Carta Imprevisti](docs/screenshots/carta.png)
+
+![Fine partita](docs/screenshots/vincitore.png)
+
 ## Regole implementate
 
 - Lancio di 2 dadi; con un doppio si rilancia, al terzo doppio consecutivo si va in prigione.

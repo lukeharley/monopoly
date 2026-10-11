@@ -582,6 +582,7 @@ label.campo {
     color: var(--rosso);
 }
 
+/* Il pallino sta accanto al prezzo, in basso, per non coprire il nome della casella */
 .proprietario {
     position: absolute;
     width: 11px;
@@ -589,11 +590,11 @@ label.campo {
     border-radius: 50%;
     border: 1.5px solid var(--casella);
     box-shadow: 0 0 0 1px var(--inchiostro);
-    top: 4px;
+    bottom: 4px;
     right: 4px;
 }
 
-.lato-b .proprietario { top: auto; bottom: 4px; }
+.lato-t .proprietario { bottom: calc(17px + 4px); }
 .lato-l .proprietario { right: auto; left: 4px; }
 
 .casella.selezionata::after {
