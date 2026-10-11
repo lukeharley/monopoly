@@ -1,19 +1,46 @@
 package com.luca.monopoly.domain;
 
+/**
+ * La banca custodisce le scorte limitate di case e alberghi.
+ */
 public class Banca {
 
-    private int patrimonio; 
+    private int casetteDisponibili;
+    private int alberghiDisponibili;
 
-    public Banca() {
-        this.patrimonio = 20580;
+    public Banca(int casetteDisponibili, int alberghiDisponibili) {
+        this.casetteDisponibili = casetteDisponibili;
+        this.alberghiDisponibili = alberghiDisponibili;
     }
 
-    public int getPatrimonio() {
-        return patrimonio;
+    public int getCasetteDisponibili() {
+        return casetteDisponibili;
     }
 
-    public void setPatrimonio(int patrimonio) {
-        this.patrimonio = patrimonio;
+    public int getAlberghiDisponibili() {
+        return alberghiDisponibili;
     }
-    
+
+    void prelevaCasette(int numero) {
+        if (casetteDisponibili < numero) {
+            throw new MossaNonValidaException("La banca ha esaurito le casette.");
+        }
+        casetteDisponibili -= numero;
+    }
+
+    void restituisciCasette(int numero) {
+        casetteDisponibili += numero;
+    }
+
+    void prelevaAlbergo() {
+        if (alberghiDisponibili == 0) {
+            throw new MossaNonValidaException("La banca ha esaurito gli alberghi.");
+        }
+        alberghiDisponibili--;
+    }
+
+    void restituisciAlbergo() {
+        alberghiDisponibili++;
+    }
+
 }

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.luca.monopoly.domain.giocatore.Giocatore;
+
 public class Tabellone {
 
 	public static final int NUMERO_CASELLE = 40;
@@ -205,6 +207,27 @@ public class Tabellone {
 		return caselle.stream()
 				.filter(casella -> casella.getTipo() == tipo)
 				.collect(Collectors.toList());
+	}
+
+	public int getPosizione(Casella casella) {
+		return caselle.indexOf(casella);
+	}
+
+	public List<Casella> getProprietaDi(Giocatore giocatore) {
+		return caselle.stream()
+				.filter(casella -> casella.getProprietario() == giocatore)
+				.collect(Collectors.toList());
+	}
+
+	public boolean possiedeTuttoIlGruppo(Giocatore giocatore, String colore) {
+		return getCaselleDelColore(colore).stream()
+				.allMatch(casella -> casella.getProprietario() == giocatore);
+	}
+
+	public int contaProprietaDelTipo(Giocatore giocatore, TipoCasella tipo) {
+		return (int) caselle.stream()
+				.filter(casella -> casella.getTipo() == tipo && casella.getProprietario() == giocatore)
+				.count();
 	}
 
 	public List<Casetta> getCasette() {

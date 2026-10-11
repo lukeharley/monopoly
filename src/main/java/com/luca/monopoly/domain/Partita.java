@@ -1,21 +1,24 @@
 package com.luca.monopoly.domain;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.luca.monopoly.domain.giocatore.Giocatore;
 
 /**
- * Motore di gioco: gestisce i turni, il lancio dei dadi e tutte le regole che
- * si applicano quando un segnalino arriva su una casella.
+ * Motore di gioco: gestisce i turni, il lancio dei dadi e ciò che accade quando
+ * un segnalino arriva su una casella. Le regole su affitti ed edifici sono
+ * delegate a {@link CalcolatoreAffitto} e {@link GestoreProprieta}.
  *
- * Ogni turno attraversa le fasi descritte in {@link FasePartita}: il giocatore
- * lancia i dadi, eventualmente decide se comprare la proprietà su cui è
- * arrivato e infine passa il turno. In qualsiasi momento del proprio turno può
- * costruire, vendere edifici e ipotecare le proprie proprietà.
+ * Ogni mossa pubblica parte da una fase stabile di {@link FasePartita} e
+ * termina in un'altra fase stabile; una mossa non ammessa nella fase corrente
+ * lancia {@link MossaNonValidaException} senza modificare lo stato.
  */
 public class Partita {
 
@@ -26,11 +29,18 @@ public class Partita {
 	private static final int MAX_DOPPI_CONSECUTIVI = 3;
 	private static final int MAX_EVENTI = 100;
 
+	/** Fasi in cui il giocatore di turno può vendere edifici e ipotecare. */
+	private static final Set<FasePartita> FASI_DI_GESTIONE = EnumSet.of(FasePartita.LANCIO_DADI,
+			FasePartita.DECISIONE_ACQUISTO, FasePartita.FINE_TURNO, FasePartita.SALDO_DEBITO);
+
 	private final Tabellone tabellone = new Tabellone();
+	private final Banca banca = new Banca(tabellone.getCasette().size(), tabellone.getAlberghi().size());
 	private final List<Giocatore> giocatori;
-	private final List<Dado> dadi;
+	private final List<Dado> dadi = List.of(new Dado(), new Dado());
 	private final Mazzo<Imprevisto> mazzoImprevisti;
 	private final Mazzo<Probabilita> mazzoProbabilita;
+	private final CalcolatoreAffitto calcolatoreAffitto = new CalcolatoreAffitto(tabellone);
+	private final GestoreProprieta gestoreProprieta;
 	private final Random random;
 	private final List<String> eventi = new ArrayList<>();
 
@@ -40,9 +50,9 @@ public class Partita {
 	private int dado2;
 	private int doppiConsecutivi;
 	private boolean rilancioConcesso;
-	private int casetteDisponibili;
-	private int alberghiDisponibili;
 	private Carta ultimaCartaPescata;
+	private Asta asta;
+	private Debito debito;
 	private Giocatore vincitore;
 
 	public Partita(List<Giocatore> giocatori) {
@@ -55,17 +65,15 @@ public class Partita {
 		}
 		this.giocatori = new ArrayList<>(giocatori);
 		this.random = random;
-		this.dadi = new Monopoly().getDadi();
 		this.mazzoImprevisti = new Mazzo<>(tabellone.getImprevisti(), random, mescolaMazzi);
 		this.mazzoProbabilita = new Mazzo<>(tabellone.getProbabilita(), random, mescolaMazzi);
-		this.casetteDisponibili = tabellone.getCasette().size();
-		this.alberghiDisponibili = tabellone.getAlberghi().size();
+		this.gestoreProprieta = new GestoreProprieta(tabellone, banca, this::registra);
 
 		registra("La partita ha inizio! Tocca a " + getGiocatoreCorrente().getNome() + ".");
 	}
 
 	// ---------------------------------------------------------------------
-	// Azioni del giocatore di turno
+	// Turno
 	// ---------------------------------------------------------------------
 
 	public void lanciaDadi() {
@@ -75,6 +83,9 @@ public class Partita {
 	/** Lancio con risultato prestabilito: usato dai test e da {@link #lanciaDadi()}. */
 	public void lanciaDadi(int risultatoDado1, int risultatoDado2) {
 		verificaFase(FasePartita.LANCIO_DADI, "Non è il momento di lanciare i dadi.");
+		if (risultatoDado1 < 1 || risultatoDado1 > 6 || risultatoDado2 < 1 || risultatoDado2 > 6) {
+			throw new IllegalArgumentException("Ogni dado vale da 1 a 6.");
+		}
 
 		Giocatore giocatore = getGiocatoreCorrente();
 		dado1 = risultatoDado1;
@@ -83,29 +94,16 @@ public class Partita {
 		rilancioConcesso = false;
 
 		boolean doppio = dado1 == dado2;
-		int risultatoDado = dado1 + dado2;
-		registra(giocatore.getNome() + " lancia i dadi: " + dado1 + " + " + dado2 + " = " + risultatoDado
+		int risultatoDadi = dado1 + dado2;
+		registra(giocatore.getNome() + " lancia i dadi: " + dado1 + " + " + dado2 + " = " + risultatoDadi
 				+ (doppio ? " (doppio!)" : "") + ".");
 
 		if (giocatore.isInPrigione()) {
-			if (doppio) {
-				registra(giocatore.getNome() + " ha fatto un doppio ed esce di prigione.");
-				esciDiPrigione(giocatore);
-			} else {
-				giocatore.setTurniInPrigione(giocatore.getTurniInPrigione() + 1);
-				if (giocatore.getTurniInPrigione() < MAX_TURNI_IN_PRIGIONE) {
-					registra(giocatore.getNome() + " resta in prigione.");
-					fase = FasePartita.FINE_TURNO;
-					return;
-				}
-				registra(giocatore.getNome() + " è al terzo turno in prigione: paga " + MULTA_PRIGIONE
-						+ "€ di multa ed esce.");
-				if (!pagamento(giocatore, null, MULTA_PRIGIONE)) {
-					return;
-				}
-				esciDiPrigione(giocatore);
-			}
-		} else if (doppio) {
+			lancioInPrigione(giocatore, doppio, risultatoDadi);
+			return;
+		}
+
+		if (doppio) {
 			doppiConsecutivi++;
 			if (doppiConsecutivi == MAX_DOPPI_CONSECUTIVI) {
 				registra(giocatore.getNome() + " ha fatto tre doppi consecutivi e va in prigione!");
@@ -116,11 +114,30 @@ public class Partita {
 			rilancioConcesso = true;
 		}
 
-		muovi(giocatore, risultatoDado);
+		muoviERisolvi(giocatore, risultatoDadi);
+	}
 
-		if (fase == FasePartita.LANCIO_DADI && giocatore == getGiocatoreCorrente()
-				&& !giocatore.isInBancarotta()) {
-			concludiAzione();
+	private void lancioInPrigione(Giocatore giocatore, boolean doppio, int risultatoDadi) {
+		if (doppio) {
+			registra(giocatore.getNome() + " ha fatto un doppio ed esce di prigione.");
+			esciDiPrigione(giocatore);
+			muoviERisolvi(giocatore, risultatoDadi);
+			return;
+		}
+
+		giocatore.setTurniInPrigione(giocatore.getTurniInPrigione() + 1);
+		if (giocatore.getTurniInPrigione() < MAX_TURNI_IN_PRIGIONE) {
+			registra(giocatore.getNome() + " resta in prigione.");
+			fase = FasePartita.FINE_TURNO;
+			return;
+		}
+
+		registra(giocatore.getNome() + " è al terzo turno in prigione: deve pagare " + MULTA_PRIGIONE
+				+ "€ di multa per uscire.");
+		fase = FasePartita.MOVIMENTO;
+		if (pagamento(giocatore, null, MULTA_PRIGIONE, risultatoDadi)) {
+			esciDiPrigione(giocatore);
+			muoviERisolvi(giocatore, risultatoDadi);
 		}
 	}
 
@@ -141,12 +158,86 @@ public class Partita {
 		concludiAzione();
 	}
 
+	/** Chi rinuncia all'acquisto mette la proprietà all'asta tra tutti i giocatori. */
 	public void rifiutaAcquisto() {
 		verificaFase(FasePartita.DECISIONE_ACQUISTO, "Non c'è nessuna proprietà da comprare.");
 		Giocatore giocatore = getGiocatoreCorrente();
 		Casella casella = tabellone.getCasella(giocatore.getPosizione());
-		registra(giocatore.getNome() + " rinuncia a comprare " + casella.getTesto() + ".");
+
+		List<Giocatore> partecipanti = new ArrayList<>();
+		for (int i = 1; i <= giocatori.size(); i++) {
+			Giocatore partecipante = giocatori.get((indiceGiocatoreCorrente + i) % giocatori.size());
+			if (!partecipante.isInBancarotta()) {
+				partecipanti.add(partecipante);
+			}
+		}
+		asta = new Asta(casella, partecipanti);
+		fase = FasePartita.ASTA;
+		registra(giocatore.getNome() + " rinuncia a comprare " + casella.getTesto() + ": si va all'asta! Offre per primo "
+				+ asta.getOfferenteDiTurno().getNome() + ".");
+	}
+
+	public void offri(int importo) {
+		verificaFase(FasePartita.ASTA, "Non c'è nessuna asta in corso.");
+		Giocatore offerente = asta.getOfferenteDiTurno();
+		asta.offri(offerente, importo);
+		registra(offerente.getNome() + " offre " + importo + "€.");
+		chiudiAstaSeConclusa();
+	}
+
+	public void ritiratiDallAsta() {
+		verificaFase(FasePartita.ASTA, "Non c'è nessuna asta in corso.");
+		Giocatore offerente = asta.getOfferenteDiTurno();
+		asta.ritirati(offerente);
+		registra(offerente.getNome() + " si ritira dall'asta.");
+		chiudiAstaSeConclusa();
+	}
+
+	private void chiudiAstaSeConclusa() {
+		if (!asta.isConclusa()) {
+			return;
+		}
+		Casella casella = asta.getCasella();
+		Giocatore aggiudicatario = asta.getMigliorOfferente();
+		if (aggiudicatario == null) {
+			registra("Nessuna offerta: " + casella.getTesto() + " resta alla banca.");
+		} else {
+			aggiudicatario.paga(asta.getOffertaMassima());
+			casella.setProprietario(aggiudicatario);
+			registra(aggiudicatario.getNome() + " si aggiudica " + casella.getTesto() + " per "
+					+ asta.getOffertaMassima() + "€.");
+		}
+		asta = null;
 		concludiAzione();
+	}
+
+	public void pagaDebito() {
+		verificaFase(FasePartita.SALDO_DEBITO, "Non hai debiti da saldare.");
+		Giocatore giocatore = getGiocatoreCorrente();
+		if (giocatore.getPortafoglio() < debito.importo()) {
+			throw new MossaNonValidaException("Ti mancano ancora " + (debito.importo() - giocatore.getPortafoglio())
+					+ "€: vendi edifici o ipoteca altre proprietà.");
+		}
+
+		Debito saldato = debito;
+		debito = null;
+		trasferisci(giocatore, saldato.creditore(), saldato.importo());
+		registra(giocatore.getNome() + " salda il debito di " + saldato.importo() + "€.");
+
+		if (saldato.passiDopoIlPagamento() > 0) {
+			// era la multa per uscire di prigione: il segnalino ora si muove
+			esciDiPrigione(giocatore);
+			muoviERisolvi(giocatore, saldato.passiDopoIlPagamento());
+		} else {
+			concludiAzione();
+		}
+	}
+
+	public void dichiaraBancarotta() {
+		verificaFase(FasePartita.SALDO_DEBITO, "Puoi dichiarare bancarotta solo se hai un debito da saldare.");
+		Giocatore creditore = debito.creditore();
+		debito = null;
+		bancarotta(getGiocatoreCorrente(), creditore);
 	}
 
 	public void fineTurno() {
@@ -174,84 +265,6 @@ public class Partita {
 		registra(giocatore.getNome() + " usa la carta \"Uscite gratis di prigione\".");
 	}
 
-	// ---------------------------------------------------------------------
-	// Gestione delle proprietà (case, alberghi, ipoteche)
-	// ---------------------------------------------------------------------
-
-	public void costruisciCasetta(int posizione) {
-		Giocatore giocatore = getGiocatoreCorrente();
-		Casella casella = verificaProprietaDelGiocatoreCorrente(posizione);
-
-		if (!casella.isTerreno()) {
-			throw new MossaNonValidaException("Si può costruire solo sui terreni.");
-		}
-		List<Casella> gruppo = tabellone.getCaselleDelColore(casella.getColore());
-		if (!possiedeTuttoIlGruppo(giocatore, casella.getColore())) {
-			throw new MossaNonValidaException(
-					"Per costruire devi possedere tutti i terreni del gruppo " + casella.getColore() + ".");
-		}
-		if (gruppo.stream().anyMatch(Casella::isIpotecata)) {
-			throw new MossaNonValidaException("Non puoi costruire: un terreno del gruppo è ipotecato.");
-		}
-
-		int numeroCasette = casella.getNumeroDiCasetteSullaCasella();
-		if (casella.haAlbergo()) {
-			throw new MossaNonValidaException("Su " + casella.getTesto() + " c'è già un albergo.");
-		}
-		int minimoDelGruppo = gruppo.stream().mapToInt(Casella::getNumeroDiCasetteSullaCasella).min().orElse(0);
-		if (numeroCasette > minimoDelGruppo) {
-			throw new MossaNonValidaException(
-					"Devi costruire in modo uniforme: prima aggiungi una casa sugli altri terreni del gruppo.");
-		}
-		if (giocatore.getPortafoglio() < casella.getCostoCasetta()) {
-			throw new MossaNonValidaException("Non hai abbastanza denaro per costruire.");
-		}
-
-		if (numeroCasette == 4) {
-			if (alberghiDisponibili == 0) {
-				throw new MossaNonValidaException("La banca ha esaurito gli alberghi.");
-			}
-			alberghiDisponibili--;
-			casetteDisponibili += 4;
-		} else {
-			if (casetteDisponibili == 0) {
-				throw new MossaNonValidaException("La banca ha esaurito le casette.");
-			}
-			casetteDisponibili--;
-		}
-
-		giocatore.paga(casella.getCostoCasetta());
-		casella.setNumeroDiCasetteSullaCasella(numeroCasette + 1);
-		registra(giocatore.getNome() + (casella.haAlbergo() ? " costruisce un albergo su " : " costruisce una casa su ")
-				+ casella.getTesto() + " per " + casella.getCostoCasetta() + "€.");
-	}
-
-	public void vendiCasetta(int posizione) {
-		Casella casella = verificaProprietaDelGiocatoreCorrente(posizione);
-		vendiEdificio(getGiocatoreCorrente(), casella, false);
-	}
-
-	public void ipoteca(int posizione) {
-		Casella casella = verificaProprietaDelGiocatoreCorrente(posizione);
-		ipotecaProprieta(getGiocatoreCorrente(), casella);
-	}
-
-	public void riscattaIpoteca(int posizione) {
-		Giocatore giocatore = getGiocatoreCorrente();
-		Casella casella = verificaProprietaDelGiocatoreCorrente(posizione);
-
-		if (!casella.isIpotecata()) {
-			throw new MossaNonValidaException(casella.getTesto() + " non è ipotecata.");
-		}
-		if (giocatore.getPortafoglio() < casella.getCostoRiscatto()) {
-			throw new MossaNonValidaException("Non hai abbastanza denaro per riscattare l'ipoteca.");
-		}
-		giocatore.paga(casella.getCostoRiscatto());
-		casella.setIpotecata(false);
-		registra(giocatore.getNome() + " riscatta l'ipoteca su " + casella.getTesto() + " pagando "
-				+ casella.getCostoRiscatto() + "€.");
-	}
-
 	/**
 	 * Chiude la partita in anticipo: vince il giocatore con il patrimonio più alto
 	 * (denaro + valore di proprietà ed edifici).
@@ -260,6 +273,8 @@ public class Partita {
 		if (fase == FasePartita.TERMINATA) {
 			throw new MossaNonValidaException("La partita è già terminata.");
 		}
+		asta = null;
+		debito = null;
 		vincitore = getGiocatoriAttivi().stream().max(Comparator.comparingInt(this::calcolaPatrimonio)).get();
 		fase = FasePartita.TERMINATA;
 		registra("Partita terminata: vince " + vincitore.getNome() + " con un patrimonio di "
@@ -267,8 +282,66 @@ public class Partita {
 	}
 
 	// ---------------------------------------------------------------------
-	// Regole
+	// Gestione delle proprietà del giocatore di turno
 	// ---------------------------------------------------------------------
+
+	public void costruisciCasetta(int posizione) {
+		Casella casella = verificaGestione(posizione, "Non puoi costruire mentre hai un debito da saldare.");
+		gestoreProprieta.costruisci(getGiocatoreCorrente(), casella);
+	}
+
+	public void vendiCasetta(int posizione) {
+		Casella casella = verificaGestione(posizione, null);
+		gestoreProprieta.vendiEdificio(getGiocatoreCorrente(), casella, false);
+	}
+
+	public void ipoteca(int posizione) {
+		Casella casella = verificaGestione(posizione, null);
+		gestoreProprieta.ipoteca(getGiocatoreCorrente(), casella);
+	}
+
+	public void riscattaIpoteca(int posizione) {
+		Casella casella = verificaGestione(posizione, "Non puoi riscattare ipoteche mentre hai un debito da saldare.");
+		gestoreProprieta.riscatta(getGiocatoreCorrente(), casella);
+	}
+
+	/**
+	 * @param erroreInSaldoDebito se non null, la mossa è vietata durante il saldo
+	 *                            di un debito (perché spende denaro)
+	 */
+	private Casella verificaGestione(int posizione, String erroreInSaldoDebito) {
+		if (!FASI_DI_GESTIONE.contains(fase)) {
+			throw new MossaNonValidaException("Ora non puoi gestire le proprietà.");
+		}
+		if (fase == FasePartita.SALDO_DEBITO && erroreInSaldoDebito != null) {
+			throw new MossaNonValidaException(erroreInSaldoDebito);
+		}
+		if (posizione < 0 || posizione >= Tabellone.NUMERO_CASELLE) {
+			throw new MossaNonValidaException("Casella inesistente.");
+		}
+		Casella casella = tabellone.getCasella(posizione);
+		if (casella.getProprietario() != getGiocatoreCorrente()) {
+			throw new MossaNonValidaException(
+					casella.getTesto() + " non appartiene a " + getGiocatoreCorrente().getNome() + ".");
+		}
+		return casella;
+	}
+
+	// ---------------------------------------------------------------------
+	// Movimento e risoluzione delle caselle
+	// ---------------------------------------------------------------------
+
+	/**
+	 * Muove il segnalino e risolve la casella di arrivo. Se la risoluzione non
+	 * richiede altre decisioni (acquisto, asta, debito) l'azione si conclude.
+	 */
+	private void muoviERisolvi(Giocatore giocatore, int passi) {
+		fase = FasePartita.MOVIMENTO;
+		muovi(giocatore, passi);
+		if (fase == FasePartita.MOVIMENTO) {
+			concludiAzione();
+		}
+	}
 
 	private void muovi(Giocatore giocatore, int passi) {
 		int nuovaPosizione = giocatore.getPosizione() + passi;
@@ -277,12 +350,10 @@ public class Partita {
 			giocatore.incassa(PREMIO_VIA);
 			registra(giocatore.getNome() + " passa dal Via e ritira " + PREMIO_VIA + "€.");
 		}
-		giocatore.setPosizione(nuovaPosizione);
-		registra(giocatore.getNome() + " arriva su " + tabellone.getCasella(nuovaPosizione).getTesto() + ".");
-		risolviCasella(giocatore);
+		spostaSenzaPassareDalVia(giocatore, nuovaPosizione);
 	}
 
-	private void muoviIndietro(Giocatore giocatore, int nuovaPosizione) {
+	private void spostaSenzaPassareDalVia(Giocatore giocatore, int nuovaPosizione) {
 		giocatore.setPosizione(nuovaPosizione);
 		registra(giocatore.getNome() + " arriva su " + tabellone.getCasella(nuovaPosizione).getTesto() + ".");
 		risolviCasella(giocatore);
@@ -297,9 +368,9 @@ public class Partita {
 				vaiInPrigione(giocatore);
 				break;
 			case TASSA:
-				registra(giocatore.getNome() + " paga " + casella.getTesto() + ": " + casella.getCostoProprieta()
-						+ "€.");
-				pagamento(giocatore, null, casella.getCostoProprieta());
+				registra(giocatore.getNome() + " deve pagare " + casella.getTesto() + ": "
+						+ casella.getCostoProprieta() + "€.");
+				pagamento(giocatore, null, casella.getCostoProprieta(), 0);
 				break;
 			case IMPREVISTI:
 				applicaCarta(giocatore, mazzoImprevisti.pesca());
@@ -330,35 +401,8 @@ public class Partita {
 			registra(casella.getTesto() + " è ipotecata: nessun affitto da pagare.");
 		} else {
 			int affitto = calcolaAffitto(casella);
-			registra(giocatore.getNome() + " paga " + affitto + "€ di affitto a " + proprietario.getNome() + ".");
-			pagamento(giocatore, proprietario, affitto);
-		}
-	}
-
-	public int calcolaAffitto(Casella casella) {
-		Giocatore proprietario = casella.getProprietario();
-		if (proprietario == null || casella.isIpotecata()) {
-			return 0;
-		}
-		Contratto contratto = tabellone.getContratto(tabellone.getCaselle().indexOf(casella));
-
-		switch (casella.getTipo()) {
-			case TERRENO:
-				int numeroCasette = casella.getNumeroDiCasetteSullaCasella();
-				if (numeroCasette == 0 && possiedeTuttoIlGruppo(proprietario, casella.getColore())) {
-					// Monopolio: la rendita del terreno nudo raddoppia
-					return contratto.getRenditaTerreno() * 2;
-				}
-				return contratto.calcolaAffitto(numeroCasette);
-			case STAZIONE:
-				// 25€ con una stazione, raddoppia per ogni altra stazione posseduta
-				int stazioni = contaProprietaDelTipo(proprietario, TipoCasella.STAZIONE);
-				return contratto.getTassa() << (stazioni - 1);
-			case SOCIETA:
-				int societa = contaProprietaDelTipo(proprietario, TipoCasella.SOCIETA);
-				return (dado1 + dado2) * (societa == 2 ? 10 : 4);
-			default:
-				return 0;
+			registra(giocatore.getNome() + " deve " + affitto + "€ di affitto a " + proprietario.getNome() + ".");
+			pagamento(giocatore, proprietario, affitto, 0);
 		}
 	}
 
@@ -372,18 +416,17 @@ public class Partita {
 				giocatore.incassa(carta.getValore());
 				break;
 			case PAGA:
-				pagamento(giocatore, null, carta.getValore());
+				pagamento(giocatore, null, carta.getValore(), 0);
 				break;
 			case VAI_A:
 				int passi = Math.floorMod(carta.getValore() - giocatore.getPosizione(), Tabellone.NUMERO_CASELLE);
 				muovi(giocatore, passi == 0 ? Tabellone.NUMERO_CASELLE : passi);
 				break;
 			case TORNA_A:
-				// lo spostamento all'indietro non fa passare dal Via
-				muoviIndietro(giocatore, carta.getValore());
+				spostaSenzaPassareDalVia(giocatore, carta.getValore());
 				break;
 			case SPOSTA:
-				muoviIndietro(giocatore,
+				spostaSenzaPassareDalVia(giocatore,
 						Math.floorMod(giocatore.getPosizione() + carta.getValore(), Tabellone.NUMERO_CASELLE));
 				break;
 			case VAI_IN_PRIGIONE:
@@ -393,76 +436,76 @@ public class Partita {
 				giocatore.getCarteUscitaDiPrigione().add(carta);
 				break;
 			case RIPARAZIONI:
-				int casette = 0;
-				int alberghi = 0;
-				for (Casella casella : getProprietaDi(giocatore)) {
-					if (casella.haAlbergo()) {
-						alberghi++;
-					} else {
-						casette += casella.getNumeroDiCasetteSullaCasella();
-					}
-				}
-				int importo = casette * carta.getValore() + alberghi * carta.getValoreAlbergo();
-				if (importo > 0) {
-					registra(giocatore.getNome() + " paga " + importo + "€ per " + casette + " case e " + alberghi
-							+ " alberghi.");
-					pagamento(giocatore, null, importo);
-				} else {
-					registra(giocatore.getNome() + " non possiede edifici: non paga nulla.");
-				}
+				pagaRiparazioni(giocatore, carta);
 				break;
 		}
 	}
 
-	/**
-	 * Trasferisce denaro dal debitore al creditore (o alla banca se il creditore è
-	 * null). Se il debitore non ha abbastanza contanti vende automaticamente gli
-	 * edifici e ipoteca le proprietà; se non basta va in bancarotta.
-	 *
-	 * @return true se il pagamento è andato a buon fine
-	 */
-	private boolean pagamento(Giocatore debitore, Giocatore creditore, int importo) {
-		if (debitore.getPortafoglio() < importo) {
-			raccogliDenaro(debitore, importo);
+	private void pagaRiparazioni(Giocatore giocatore, Carta carta) {
+		int casette = 0;
+		int alberghi = 0;
+		for (Casella casella : tabellone.getProprietaDi(giocatore)) {
+			if (casella.haAlbergo()) {
+				alberghi++;
+			} else {
+				casette += casella.getNumeroDiCasetteSullaCasella();
+			}
 		}
-		if (debitore.getPortafoglio() < importo) {
+		int importo = casette * carta.getValore() + alberghi * carta.getValoreAlbergo();
+		if (importo == 0) {
+			registra(giocatore.getNome() + " non possiede edifici: non paga nulla.");
+			return;
+		}
+		registra(giocatore.getNome() + " deve " + importo + "€ per " + casette + " case e " + alberghi
+				+ " alberghi.");
+		pagamento(giocatore, null, importo, 0);
+	}
+
+	// ---------------------------------------------------------------------
+	// Pagamenti, debiti e bancarotta
+	// ---------------------------------------------------------------------
+
+	/**
+	 * Paga subito se i contanti bastano. Altrimenti, se vendendo edifici e
+	 * ipotecando il giocatore può raccogliere la somma, apre la fase
+	 * SALDO_DEBITO; se nemmeno così può pagare, va in bancarotta.
+	 *
+	 * @return true se il pagamento è avvenuto subito
+	 */
+	private boolean pagamento(Giocatore debitore, Giocatore creditore, int importo, int passiDopoIlPagamento) {
+		if (debitore.getPortafoglio() >= importo) {
+			trasferisci(debitore, creditore, importo);
+			return true;
+		}
+		if (gestoreProprieta.valoreLiquidabile(debitore) < importo) {
+			registra(debitore.getNome() + " non può pagare " + importo + "€ nemmeno vendendo tutto.");
 			bancarotta(debitore, creditore);
 			return false;
 		}
+		debito = new Debito(creditore, importo, passiDopoIlPagamento);
+		fase = FasePartita.SALDO_DEBITO;
+		registra(debitore.getNome() + " ha solo " + debitore.getPortafoglio() + "€ contanti: deve vendere edifici o "
+				+ "ipotecare proprietà per pagare " + importo + "€.");
+		return false;
+	}
+
+	private void trasferisci(Giocatore debitore, Giocatore creditore, int importo) {
 		debitore.paga(importo);
 		if (creditore != null) {
 			creditore.incassa(importo);
 		}
-		return true;
 	}
 
-	private void raccogliDenaro(Giocatore giocatore, int importo) {
-		registra(giocatore.getNome() + " non ha abbastanza contanti: vende edifici e ipoteca proprietà.");
-		while (giocatore.getPortafoglio() < importo) {
-			Casella conEdifici = getProprietaDi(giocatore).stream()
-					.filter(casella -> casella.getNumeroDiCasetteSullaCasella() > 0)
-					.max(Comparator.comparingInt(Casella::getNumeroDiCasetteSullaCasella))
-					.orElse(null);
-			if (conEdifici != null) {
-				vendiEdificio(giocatore, conEdifici, true);
-				continue;
-			}
-			Casella daIpotecare = getProprietaDi(giocatore).stream()
-					.filter(casella -> !casella.isIpotecata())
-					.findFirst()
-					.orElse(null);
-			if (daIpotecare == null) {
-				return;
-			}
-			ipotecaProprieta(giocatore, daIpotecare);
-		}
-	}
-
+	/**
+	 * Gli edifici tornano alla banca a metà prezzo; denaro, proprietà e carte
+	 * passano al creditore, oppure tornano alla banca se il creditore è la banca.
+	 */
 	private void bancarotta(Giocatore giocatore, Giocatore creditore) {
+		gestoreProprieta.liquidaEdifici(giocatore);
 		giocatore.setInBancarotta(true);
 		registra(giocatore.getNome() + " è in bancarotta ed esce dal gioco!");
 
-		for (Casella casella : getProprietaDi(giocatore)) {
+		for (Casella casella : tabellone.getProprietaDi(giocatore)) {
 			if (creditore != null) {
 				casella.setProprietario(creditore);
 			} else {
@@ -490,61 +533,15 @@ public class Partita {
 			vincitore = attivi.get(0);
 			fase = FasePartita.TERMINATA;
 			registra(vincitore.getNome() + " è l'ultimo giocatore rimasto e VINCE la partita!");
-		} else if (giocatore == getGiocatoreCorrente()) {
+		} else {
+			// il debitore è sempre il giocatore di turno
 			passaAlProssimoGiocatore();
 		}
 	}
 
-	private void vendiEdificio(Giocatore giocatore, Casella casella, boolean venditaForzata) {
-		int numeroCasette = casella.getNumeroDiCasetteSullaCasella();
-		if (!casella.isTerreno() || numeroCasette == 0) {
-			throw new MossaNonValidaException("Su " + casella.getTesto() + " non ci sono edifici da vendere.");
-		}
-		int massimoDelGruppo = tabellone.getCaselleDelColore(casella.getColore()).stream()
-				.mapToInt(Casella::getNumeroDiCasetteSullaCasella).max().orElse(0);
-		if (!venditaForzata && numeroCasette < massimoDelGruppo) {
-			throw new MossaNonValidaException(
-					"Devi vendere in modo uniforme: prima vendi gli edifici sui terreni del gruppo che ne hanno di più.");
-		}
-
-		int ricavo = casella.getCostoCasetta() / 2;
-		if (casella.haAlbergo()) {
-			if (casetteDisponibili >= 4) {
-				// l'albergo viene sostituito da 4 casette
-				casetteDisponibili -= 4;
-				casella.setNumeroDiCasetteSullaCasella(4);
-			} else if (venditaForzata) {
-				ricavo *= 5;
-				casella.setNumeroDiCasetteSullaCasella(0);
-			} else {
-				throw new MossaNonValidaException(
-						"La banca non ha 4 casette per sostituire l'albergo: non puoi venderlo ora.");
-			}
-			alberghiDisponibili++;
-			registra(giocatore.getNome() + " vende l'albergo su " + casella.getTesto() + " e incassa " + ricavo
-					+ "€.");
-		} else {
-			casetteDisponibili++;
-			casella.setNumeroDiCasetteSullaCasella(numeroCasette - 1);
-			registra(giocatore.getNome() + " vende una casa su " + casella.getTesto() + " e incassa " + ricavo
-					+ "€.");
-		}
-		giocatore.incassa(ricavo);
-	}
-
-	private void ipotecaProprieta(Giocatore giocatore, Casella casella) {
-		if (casella.isIpotecata()) {
-			throw new MossaNonValidaException(casella.getTesto() + " è già ipotecata.");
-		}
-		if (casella.isTerreno() && tabellone.getCaselleDelColore(casella.getColore()).stream()
-				.anyMatch(terreno -> terreno.getNumeroDiCasetteSullaCasella() > 0)) {
-			throw new MossaNonValidaException("Prima di ipotecare devi vendere gli edifici del gruppo.");
-		}
-		casella.setIpotecata(true);
-		giocatore.incassa(casella.getValoreIpotecario());
-		registra(giocatore.getNome() + " ipoteca " + casella.getTesto() + " e incassa "
-				+ casella.getValoreIpotecario() + "€.");
-	}
+	// ---------------------------------------------------------------------
+	// Prigione, carte e turni
+	// ---------------------------------------------------------------------
 
 	private void vaiInPrigione(Giocatore giocatore) {
 		giocatore.setPosizione(Tabellone.POSIZIONE_PRIGIONE);
@@ -560,14 +557,14 @@ public class Partita {
 	}
 
 	private void restituisciCartaAlMazzo(Carta carta) {
-		if (carta instanceof Imprevisto) {
-			mazzoImprevisti.rimettiInFondo(carta);
-		} else {
-			mazzoProbabilita.rimettiInFondo(carta);
+		if (carta instanceof Imprevisto imprevisto) {
+			mazzoImprevisti.rimettiInFondo(imprevisto);
+		} else if (carta instanceof Probabilita probabilita) {
+			mazzoProbabilita.rimettiInFondo(probabilita);
 		}
 	}
 
-	/** Dopo il lancio (ed eventuale acquisto) si rilancia solo se è uscito un doppio. */
+	/** Dopo il lancio (ed eventuale acquisto, asta o debito) si rilancia solo con un doppio. */
 	private void concludiAzione() {
 		Giocatore giocatore = getGiocatoreCorrente();
 		if (rilancioConcesso && !giocatore.isInPrigione()) {
@@ -610,21 +607,6 @@ public class Partita {
 		return giocatore;
 	}
 
-	private Casella verificaProprietaDelGiocatoreCorrente(int posizione) {
-		if (fase == FasePartita.TERMINATA) {
-			throw new MossaNonValidaException("La partita è terminata.");
-		}
-		if (posizione < 0 || posizione >= Tabellone.NUMERO_CASELLE) {
-			throw new MossaNonValidaException("Casella inesistente.");
-		}
-		Casella casella = tabellone.getCasella(posizione);
-		if (casella.getProprietario() != getGiocatoreCorrente()) {
-			throw new MossaNonValidaException(
-					casella.getTesto() + " non appartiene a " + getGiocatoreCorrente().getNome() + ".");
-		}
-		return casella;
-	}
-
 	private void registra(String evento) {
 		eventi.add(evento);
 		if (eventi.size() > MAX_EVENTI) {
@@ -636,30 +618,21 @@ public class Partita {
 	// Interrogazioni sullo stato della partita
 	// ---------------------------------------------------------------------
 
-	public boolean possiedeTuttoIlGruppo(Giocatore giocatore, String colore) {
-		return tabellone.getCaselleDelColore(colore).stream()
-				.allMatch(casella -> casella.getProprietario() == giocatore);
-	}
-
-	private int contaProprietaDelTipo(Giocatore giocatore, TipoCasella tipo) {
-		return (int) tabellone.getCaselleDelTipo(tipo).stream()
-				.filter(casella -> casella.getProprietario() == giocatore)
-				.count();
-	}
-
-	public List<Casella> getProprietaDi(Giocatore giocatore) {
-		return tabellone.getCaselle().stream()
-				.filter(casella -> casella.getProprietario() == giocatore)
-				.collect(Collectors.toList());
+	public int calcolaAffitto(Casella casella) {
+		return calcolatoreAffitto.calcola(casella, dado1 + dado2);
 	}
 
 	public int calcolaPatrimonio(Giocatore giocatore) {
 		int patrimonio = giocatore.getPortafoglio();
-		for (Casella casella : getProprietaDi(giocatore)) {
+		for (Casella casella : tabellone.getProprietaDi(giocatore)) {
 			patrimonio += casella.isIpotecata() ? casella.getValoreIpotecario() : casella.getCostoProprieta();
 			patrimonio += casella.getNumeroDiCasetteSullaCasella() * casella.getCostoCasetta();
 		}
 		return patrimonio;
+	}
+
+	public List<Casella> getProprietaDi(Giocatore giocatore) {
+		return tabellone.getProprietaDi(giocatore);
 	}
 
 	public List<Giocatore> getGiocatoriAttivi() {
@@ -671,7 +644,7 @@ public class Partita {
 	}
 
 	public List<Giocatore> getGiocatori() {
-		return giocatori;
+		return Collections.unmodifiableList(giocatori);
 	}
 
 	public Tabellone getTabellone() {
@@ -694,20 +667,28 @@ public class Partita {
 		return ultimaCartaPescata;
 	}
 
+	public Asta getAsta() {
+		return asta;
+	}
+
+	public Debito getDebito() {
+		return debito;
+	}
+
 	public Giocatore getVincitore() {
 		return vincitore;
 	}
 
 	public int getCasetteDisponibili() {
-		return casetteDisponibili;
+		return banca.getCasetteDisponibili();
 	}
 
 	public int getAlberghiDisponibili() {
-		return alberghiDisponibili;
+		return banca.getAlberghiDisponibili();
 	}
 
 	public List<String> getEventi() {
-		return eventi;
+		return Collections.unmodifiableList(eventi);
 	}
 
 }

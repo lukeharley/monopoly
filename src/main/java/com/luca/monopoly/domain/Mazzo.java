@@ -32,10 +32,8 @@ public class Mazzo<T extends Carta> {
         return carta;
     }
 
-    public void rimettiInFondo(Carta carta) {
-        @SuppressWarnings("unchecked")
-        T cartaDelMazzo = (T) carta;
-        carte.addLast(cartaDelMazzo);
+    public void rimettiInFondo(T carta) {
+        carte.addLast(carta);
     }
 
     public int size() {

@@ -2,20 +2,22 @@
 
 ## Come avviare il gioco
 
-- Con MySQL (configurazione in `application.yml`): `mvn spring-boot:run`
 - Senza MySQL, con database H2 in memoria: `mvn spring-boot:run -Dspring-boot.run.profiles=dev`
+- Con MySQL: impostare le variabili d'ambiente `DB_PASSWORD` (ed eventualmente `DB_URL`, `DB_USERNAME`)
+  e lanciare `mvn spring-boot:run`. In VS Code si possono mettere nel file `.env` (escluso da git).
 
 Poi aprire http://localhost:8080, registrare da 2 a 8 giocatori (nome + segnalino) e premere **Avvia partita**.
-Si gioca a turni sullo stesso computer: il giocatore di turno lancia i dadi, decide se comprare la proprietà libera,
-gestisce le proprie proprietà cliccando le caselle del tabellone (case, alberghi, ipoteche) e infine passa il turno.
+Si può giocare sullo stesso computer oppure da più dispositivi aperti sulla stessa partita: ogni schermata
+si aggiorna da sola con le mosse degli altri.
 
-Test: `mvn test`
+Test: `mvn verify` (eseguiti anche dalla CI di GitHub Actions a ogni push).
 
 ## Regole implementate
 
 - Lancio di 2 dadi; con un doppio si rilancia, al terzo doppio consecutivo si va in prigione.
 - Passaggio dal Via: +200€.
-- Acquisto facoltativo di terreni, stazioni e società.
+- Acquisto facoltativo di terreni, stazioni e società; se il giocatore rinuncia, la proprietà va **all'asta**
+  tra tutti i giocatori (senza offerte resta alla banca).
 - Affitti versati al proprietario: terreno (doppio con il monopolio del colore), case e alberghi secondo i Contratti,
   stazioni 25/50/100/200€, società 4 o 10 volte il risultato dei dadi. Le proprietà ipotecate non rendono.
 - Costruzione uniforme di case e alberghi (solo con il monopolio e nessun terreno del gruppo ipotecato),
@@ -24,11 +26,24 @@ Test: `mvn test`
 - 16 Imprevisti e 16 Probabilità mescolati, incluse "Uscite gratis di prigione" e riparazioni per case/alberghi.
 - Prigione: multa di 125€, carta "Uscite gratis", oppure doppio; al terzo tentativo fallito si paga e si esce.
 - Tasse: Patrimoniale 200€, di Lusso 100€.
-- Debiti: se mancano i contanti, il gioco vende automaticamente gli edifici e ipoteca le proprietà;
-  se non basta il giocatore va in bancarotta (i beni passano al creditore o tornano alla banca).
+- Debiti: se i contanti non bastano, il giocatore sceglie quali edifici vendere e quali proprietà ipotecare,
+  poi paga; può anche dichiarare bancarotta. Se nemmeno vendendo tutto può pagare, va subito in bancarotta
+  (edifici alla banca, il resto al creditore o alla banca).
 - Vince l'ultimo giocatore rimasto, oppure (pulsante **Termina partita**) chi ha il patrimonio più alto.
 
-Non implementati: aste, scambi tra giocatori.
+Non implementati: scambi di proprietà tra giocatori.
+
+## Architettura
+
+| Livello | Classi | Responsabilità |
+|---|---|---|
+| Web | `HomeController`, `AjaxHomeController`, `GestoreErroriApi` | Lobby (form + redirect), API JSON delle mosse, errori → codici HTTP |
+| Servizi | `MonopolyService`, `GiocatoreService` | Partita condivisa sotto lock, versione per la concorrenza ottimistica, persistenza giocatori |
+| Dominio | `Partita`, `Asta`, `CalcolatoreAffitto`, `GestoreProprieta`, `Tabellone`, `Banca`, `Mazzo` | Regole del gioco, indipendenti da Spring |
+
+Codici di risposta dell'API: `200` mossa eseguita (corpo = nuovo stato), `204` stato invariato (polling),
+`400` parametri non validi, `404` nessuna partita, `409` mossa fatta su uno stato superato,
+`422` mossa non ammessa dalle regole.
 
 ## Note di progetto
 

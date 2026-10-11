@@ -232,3 +232,21 @@ h1 {
         padding: 4px;
     }
 }
+
+.info-fase {
+    width: 100%;
+    text-align: center;
+}
+
+.importo-offerta {
+    width: 110px;
+}
+
+.in-attesa button {
+    cursor: progress;
+}
+
+.casella:focus-visible {
+    outline: 3px solid #0d6efd;
+    z-index: 3;
+}

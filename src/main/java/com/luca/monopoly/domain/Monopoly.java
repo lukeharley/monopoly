@@ -14,7 +14,7 @@ public class Monopoly {
 
 	public Monopoly() {
 		this.tabellone = new Tabellone();
-		this.banca = new Banca();
+		this.banca = new Banca(tabellone.getCasette().size(), tabellone.getAlberghi().size());
 	}
 
 	public Tabellone getTabellone() {
