@@ -927,6 +927,17 @@ label.campo {
     padding: 0 6px 6px;
 }
 
+.contratto-motivi {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: -6px;
+    padding: 0 8px 6px;
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--tenue);
+}
+
 .carta {
     width: 440px;
     border: 2px solid var(--inchiostro);

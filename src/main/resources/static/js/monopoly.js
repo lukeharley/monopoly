@@ -561,6 +561,7 @@ function disegnaContratto() {
         + (nota ? '<div class="contratto-nota">' + nota + "</div>" : "")
         + '<div id="errore-contratto" class="contratto-nota" hidden></div>'
         + '<div class="contratto-azioni" id="azioni-casella"></div>'
+        + '<div class="contratto-motivi" id="motivi-contratto" hidden></div>'
         + "</div>";
     velo.innerHTML = html;
     velo.hidden = false;
@@ -573,26 +574,109 @@ function disegnaContratto() {
     velo.querySelector(".contratto-chiudi").addEventListener("click", chiudiContratto);
 
     var azioni = document.getElementById("azioni-casella");
+    var motivi = [];
     var possedutaDalGiocatoreDiTurno = casella.proprietario === stato.giocatoreCorrente && stato.fase !== "TERMINATA";
     if (possedutaDalGiocatoreDiTurno) {
-        var portafoglio = stato.giocatori[stato.giocatoreCorrente].portafoglio;
         if (casella.tipo === "TERRENO" && !casella.ipotecata) {
             var edificio = casella.casette === 4 ? "Costruisci albergo" : "Costruisci casa";
-            aggiungiPulsante(azioni, edificio + " (" + casella.costoCasetta + "€)", "btn-verde btn-piccolo",
-                function () { invia("/costruisciCasetta/" + casella.posizione); },
-                casella.casette === 5 || portafoglio < casella.costoCasetta);
-            aggiungiPulsante(azioni, "Vendi edificio", "btn-piccolo",
-                function () { invia("/vendiCasetta/" + casella.posizione); }, casella.casette === 0);
+            aggiungiAzioneContratto(azioni, motivi, edificio + " (" + casella.costoCasetta + "€)", "btn-verde",
+                "/costruisciCasetta/", casella, motivoNonCostruibile(casella));
+            aggiungiAzioneContratto(azioni, motivi, "Vendi edificio", "",
+                "/vendiCasetta/", casella, motivoNonVendibile(casella));
         }
         if (casella.ipotecata) {
-            aggiungiPulsante(azioni, "Riscatta ipoteca (" + casella.costoRiscatto + "€)", "btn-oro btn-piccolo",
-                function () { invia("/riscattaIpoteca/" + casella.posizione); }, portafoglio < casella.costoRiscatto);
+            aggiungiAzioneContratto(azioni, motivi, "Riscatta ipoteca (" + casella.costoRiscatto + "€)", "btn-oro",
+                "/riscattaIpoteca/", casella, motivoNonRiscattabile(casella));
         } else {
-            aggiungiPulsante(azioni, "Ipoteca (+" + casella.valoreIpotecario + "€)", "btn-oro btn-piccolo",
-                function () { invia("/ipoteca/" + casella.posizione); }, casella.tipo === "TERRENO" && casella.casette > 0);
+            aggiungiAzioneContratto(azioni, motivi, "Ipoteca (+" + casella.valoreIpotecario + "€)", "btn-oro",
+                "/ipoteca/", casella, motivoNonIpotecabile(casella));
         }
     }
     azioni.hidden = azioni.children.length === 0;
+
+    var elencoMotivi = document.getElementById("motivi-contratto");
+    elencoMotivi.innerHTML = motivi.map(function (motivo) {
+        return "<div>" + motivo + "</div>";
+    }).join("");
+    elencoMotivi.hidden = motivi.length === 0;
+}
+
+/* Un pulsante del contratto: se la mossa non è consentita resta disattivato e il motivo va sotto */
+function aggiungiAzioneContratto(contenitore, motivi, testo, classe, url, casella, motivo) {
+    var pulsante = aggiungiPulsante(contenitore, testo, classe + " btn-piccolo",
+        function () { invia(url + casella.posizione); }, !!motivo);
+    if (motivo) {
+        pulsante.title = motivo;
+        motivi.push(testo.replace(/ \(.*\)$/, "") + ": " + motivo.charAt(0).toLowerCase() + motivo.slice(1));
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Regole di costruzione e ipoteca                                     */
+/* Rispecchiano i controlli di Partita.java, che resta l'arbitro:      */
+/* qui servono solo a non offrire mosse che il server rifiuterebbe.    */
+/* ------------------------------------------------------------------ */
+
+function terreniDelGruppo(casella) {
+    return stato.caselle.filter(function (altra) {
+        return altra.tipo === "TERRENO" && altra.colore === casella.colore;
+    });
+}
+
+function portafoglioCorrente() {
+    return stato.giocatori[stato.giocatoreCorrente].portafoglio;
+}
+
+function motivoNonCostruibile(casella) {
+    var gruppo = terreniDelGruppo(casella);
+    if (!possiedeTuttoIlGruppo(casella)) {
+        return "Serve il gruppo completo (" + gruppo.length + " terreni " + casella.colore + ").";
+    }
+    if (gruppo.some(function (terreno) { return terreno.ipotecata; })) {
+        return "Un terreno del gruppo è ipotecato.";
+    }
+    if (casella.casette === 5) {
+        return "C'è già un albergo.";
+    }
+    var minimo = Math.min.apply(null, gruppo.map(function (terreno) { return terreno.casette; }));
+    if (casella.casette > minimo) {
+        return "Costruisci in modo uniforme: prima una casa sugli altri terreni del gruppo.";
+    }
+    if (portafoglioCorrente() < casella.costoCasetta) {
+        return "Non hai abbastanza denaro.";
+    }
+    if (casella.casette === 4 && stato.alberghiDisponibili === 0) {
+        return "La banca ha finito gli alberghi.";
+    }
+    if (casella.casette < 4 && stato.casetteDisponibili === 0) {
+        return "La banca ha finito le case.";
+    }
+    return "";
+}
+
+function motivoNonVendibile(casella) {
+    if (casella.casette === 0) {
+        return "Non ci sono edifici da vendere.";
+    }
+    var massimo = Math.max.apply(null, terreniDelGruppo(casella).map(function (terreno) { return terreno.casette; }));
+    if (casella.casette < massimo) {
+        return "Vendi in modo uniforme: prima sui terreni del gruppo che hanno più edifici.";
+    }
+    if (casella.casette === 5 && stato.casetteDisponibili < 4) {
+        return "La banca non ha 4 case per sostituire l'albergo.";
+    }
+    return "";
+}
+
+function motivoNonIpotecabile(casella) {
+    if (casella.tipo === "TERRENO" && terreniDelGruppo(casella).some(function (terreno) { return terreno.casette > 0; })) {
+        return "Prima vendi gli edifici del gruppo.";
+    }
+    return "";
+}
+
+function motivoNonRiscattabile(casella) {
+    return portafoglioCorrente() < casella.costoRiscatto ? "Non hai abbastanza denaro." : "";
 }
 
 /* ------------------------------------------------------------------ */
