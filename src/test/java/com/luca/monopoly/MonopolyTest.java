@@ -76,7 +76,10 @@ public class MonopolyTest {
 		assertEquals("Vicolo Corto", contratti.get(1).getTesto());
 		assertEquals(4, contratti.get(3).getRenditaTerreno());
 		assertEquals(175, contratti.get(37).getRenditaUnaCasetta());
-		assertEquals(400, contratti.get(19).getRenditaAlbergo());
+		assertEquals(1000, contratti.get(19).getRenditaAlbergo());
+		assertEquals(250, contratti.get(1).getRenditaAlbergo());
+		assertEquals(1400, contratti.get(39).getRenditaTreCasette());
+		assertEquals(1700, contratti.get(39).getRenditaQuattroCasette());
 		assertEquals(65, contratti.get(35).getRenditaUnaStazione());
 		assertEquals(130, contratti.get(35).getRenditaDueStazioni());
 

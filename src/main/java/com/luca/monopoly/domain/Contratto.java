@@ -30,6 +30,16 @@ public class Contratto {
 
   }
 
+  /** Contratto di un terreno con le rendite ufficiali per ogni numero di case. */
+  public Contratto(String testo, int renditaTerreno, int renditaUnaCasetta, int renditaDueCasette,
+      int renditaTreCasette, int renditaQuattroCasette, int renditaAlbergo) {
+    this(testo, renditaTerreno, renditaUnaCasetta, 0, 0);
+    this.renditaDueCasette = renditaDueCasette;
+    this.renditaTreCasette = renditaTreCasette;
+    this.renditaQuattroCasette = renditaQuattroCasette;
+    this.renditaAlbergo = renditaAlbergo;
+  }
+
   public String getTesto() {
     return testo;
   }

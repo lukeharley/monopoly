@@ -31,7 +31,7 @@
                     <div class="etichetta">Nuovo giocatore</div>
                     <label class="campo">
                         Nome del giocatore
-                        <input type="text" th:field="*{nome}" maxlength="30" placeholder="Es. Giulia" required autocomplete="off" />
+                        <input type="text" th:field="*{nome}" th:maxlength="${T(com.luca.monopoly.service.GiocatoreService).LUNGHEZZA_MASSIMA_NOME}" placeholder="Es. Giulia" required autocomplete="off" />
                     </label>
                     <div class="campo">
                         <div>Segnalino <span class="tenue">(tra quelli disponibili)</span></div>
@@ -73,7 +73,9 @@
                 <form th:action="@{/avviaPartita}" method="post">
                     <button type="submit" class="btn btn-rosso btn-grande" th:disabled="${#lists.size(giocatori) < 2}">Avvia partita</button>
                 </form>
-                <a class="btn btn-vuoto" th:href="@{/resettaPartita}">Resetta giocatori</a>
+                <form th:action="@{/resettaPartita}" method="post">
+                    <button type="submit" class="btn btn-vuoto" id="reset-button">Resetta giocatori</button>
+                </form>
                 <div class="tenue" th:if="${#lists.size(giocatori) < 2}">Servono almeno 2 giocatori per iniziare.</div>
             </div>
         </div>
@@ -137,8 +139,10 @@
 
             <div class="pannello-piede">
                 <button type="button" class="btn-chiaro" id="termina-button">Termina partita</button>
-                <a class="btn-link-chiaro" th:href="@{/resettaPartita}"
-                   onclick="return confirm('Vuoi davvero cancellare la partita e i giocatori?');">Resetta partita</a>
+                <form id="form-reset" th:action="@{/resettaPartita}" method="post"
+                      onsubmit="return confirm('Vuoi davvero cancellare la partita e i giocatori?');">
+                    <button type="submit" class="btn-link-chiaro" id="reset-button">Resetta partita</button>
+                </form>
             </div>
         </div>
 

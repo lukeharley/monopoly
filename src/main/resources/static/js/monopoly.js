@@ -28,11 +28,17 @@ var ANGOLI = {
     VAI_IN_PRIGIONE: ["andate", "IN PRIGIONE!", "", "15px", "#a8322a", "45deg"]
 };
 
+/* Fasi in cui il giocatore di turno può gestire le proprietà (come FASI_DI_GESTIONE in Partita.java) */
+var FASI_DI_GESTIONE = ["LANCIO_DADI", "DECISIONE_ACQUISTO", "FINE_TURNO", "SALDO_DEBITO"];
+
+var INTERVALLO_AGGIORNAMENTO_MS = 1500;
+
 var stato = null;
 var casellaSelezionata = null;
 var carteViste = null;
 var vincitoreNascosto = false;
 var dadiInLancio = false;
+var richiestaInCorso = false;
 
 document.addEventListener("DOMContentLoaded", function () {
     if (!document.getElementById("partita")) {
@@ -48,29 +54,93 @@ document.addEventListener("DOMContentLoaded", function () {
             chiudiContratto();
         }
     });
-    fetch("/stato")
-        .then(leggiRisposta)
-        .then(aggiornaInterfaccia)
-        .catch(mostraErrore);
+    caricaStato();
+    // chi guarda da un altro dispositivo vede le mosse degli altri giocatori
+    setInterval(aggiornaSeCambiato, INTERVALLO_AGGIORNAMENTO_MS);
 });
 
-function richiesta(url) {
-    return fetch(url, { method: "POST" }).then(leggiRisposta);
+function caricaStato() {
+    return fetch("/stato")
+        .then(leggiRisposta)
+        .then(aggiornaInterfaccia)
+        .catch(gestisciErrore);
 }
 
-function invia(url) {
-    richiesta(url)
+function aggiornaSeCambiato() {
+    if (richiestaInCorso || !stato) {
+        return;
+    }
+    fetch("/stato?versione=" + stato.versione)
+        .then(function (risposta) {
+            return risposta.status === 204 ? null : leggiRisposta(risposta);
+        })
+        .then(function (dati) {
+            if (dati) {
+                aggiornaInterfaccia(dati);
+            }
+        })
+        .catch(gestisciErrore);
+}
+
+/* Invia una mossa con la versione dello stato su cui il giocatore ha deciso. */
+function richiesta(url, parametri) {
+    var query = new URLSearchParams(parametri || {});
+    if (stato) {
+        query.set("versione", stato.versione);
+    }
+    return fetch(url + "?" + query.toString(), { method: "POST" }).then(leggiRisposta);
+}
+
+function invia(url, parametri) {
+    if (richiestaInCorso) {
+        return;
+    }
+    impostaAttesa(true);
+    richiesta(url, parametri)
         .then(aggiornaInterfaccia)
-        .catch(mostraErrore);
+        .catch(gestisciErrore)
+        .finally(function () {
+            impostaAttesa(false);
+        });
+}
+
+function impostaAttesa(inAttesa) {
+    richiestaInCorso = inAttesa;
+    document.body.classList.toggle("in-attesa", inAttesa);
 }
 
 function leggiRisposta(risposta) {
-    return risposta.json().then(function (dati) {
-        if (!risposta.ok) {
-            throw new Error(dati.errore || "Richiesta non riuscita. Errore " + risposta.status);
-        }
-        return dati;
-    });
+    return risposta.json()
+        .catch(function () {
+            return {};
+        })
+        .then(function (dati) {
+            if (!risposta.ok) {
+                var errore = new Error(dati.errore || "Richiesta non riuscita. Errore " + risposta.status);
+                errore.status = risposta.status;
+                throw errore;
+            }
+            return dati;
+        });
+}
+
+function gestisciErrore(errore) {
+    if (errore.status === 404) {
+        // la partita è stata resettata: si torna alla registrazione dei giocatori
+        window.location.reload();
+        return;
+    }
+    if (errore.status === 409) {
+        // un altro giocatore ha mosso nel frattempo: mostra lo stato aggiornato
+        fetch("/stato")
+            .then(leggiRisposta)
+            .then(function (dati) {
+                aggiornaInterfaccia(dati);
+                mostraErrore(errore);
+            });
+        return;
+    }
+    mostraErrore(errore);
 }
 
 function mostraErrore(errore) {
@@ -150,8 +220,16 @@ function disegnaTabellone() {
             elemento.className = "casella lato-" + cella.lato + (angolare ? " angolare" : "");
             elemento.style.gridRow = cella.riga;
             elemento.style.gridColumn = cella.colonna;
+            elemento.setAttribute("role", "button");
+            elemento.tabIndex = 0;
             elemento.addEventListener("click", function () {
                 selezionaCasella(casella.posizione);
+            });
+            elemento.addEventListener("keydown", function (evento) {
+                if (evento.key === "Enter" || evento.key === " ") {
+                    evento.preventDefault();
+                    selezionaCasella(casella.posizione);
+                }
             });
             tabellone.appendChild(elemento);
         }
@@ -159,6 +237,7 @@ function disegnaTabellone() {
         elemento.classList.toggle("ipotecata", casella.ipotecata);
         elemento.classList.toggle("selezionata", casella.posizione === casellaSelezionata);
         elemento.title = casella.testo;
+        elemento.setAttribute("aria-label", casella.testo);
 
         var html = "";
         if (angolare) {
@@ -251,10 +330,11 @@ function disegnaDadi(faccia1, faccia2, inLancio) {
 }
 
 function lanciaDadi() {
-    if (dadiInLancio) {
+    if (dadiInLancio || richiestaInCorso) {
         return;
     }
     dadiInLancio = true;
+    impostaAttesa(true);
     disegnaCentro();
 
     // I dadi rotolano per qualche fotogramma mentre il server decide il risultato
@@ -277,7 +357,10 @@ function lanciaDadi() {
         .catch(function (errore) {
             dadiInLancio = false;
             disegnaCentro();
-            mostraErrore(errore);
+            gestisciErrore(errore);
+        })
+        .finally(function () {
+            impostaAttesa(false);
         });
 }
 
@@ -289,22 +372,30 @@ function disegnaCentro() {
     var terminata = stato.fase === "TERMINATA";
     var giocatore = stato.giocatori[stato.giocatoreCorrente];
     var vincitore = terminata && stato.vincitore !== null ? stato.giocatori[stato.vincitore] : null;
-    var protagonista = vincitore || giocatore;
     var casellaCorrente = stato.caselle[giocatore.posizione];
 
     if (!dadiInLancio) {
         disegnaDadi(stato.dado1 || 6, stato.dado2 || 6, false);
     }
 
+    // durante l'asta il protagonista è chi deve offrire, non il giocatore di turno
+    var indiceProtagonista = vincitore ? stato.vincitore
+        : stato.fase === "ASTA" ? stato.asta.offerenteDiTurno : stato.giocatoreCorrente;
+    var protagonista = stato.giocatori[indiceProtagonista];
+    var nomeProtagonista = '<span style="color:' + COLORI_GIOCATORI[indiceProtagonista] + '">'
+        + escape(protagonista.nome) + "</span>";
     document.getElementById("turno-segnalino").src = immagineSegnalino(protagonista.segnalino);
-    var colore = COLORI_GIOCATORI[vincitore ? stato.vincitore : stato.giocatoreCorrente];
-    document.getElementById("turno").innerHTML = vincitore
-        ? '<span style="color:' + colore + '">' + escape(vincitore.nome) + "</span> ha vinto!"
-        : 'Turno di <span style="color:' + colore + '">' + escape(giocatore.nome) + "</span>";
+    document.getElementById("turno").innerHTML = vincitore ? nomeProtagonista + " ha vinto!"
+        : stato.fase === "ASTA" ? "Offre " + nomeProtagonista
+        : "Turno di " + nomeProtagonista;
 
     var testoStato = "";
     if (!terminata) {
-        if (giocatore.inPrigione) {
+        if (stato.fase === "ASTA") {
+            testoStato = statoAsta();
+        } else if (stato.fase === "SALDO_DEBITO") {
+            testoStato = statoDebito(giocatore);
+        } else if (giocatore.inPrigione) {
             testoStato = "In prigione · tentativo " + (giocatore.turniInPrigione + 1) + " di 3 · multa " + stato.multaPrigione + "€";
         } else if (stato.fase === "DECISIONE_ACQUISTO") {
             testoStato = casellaCorrente.testo + " è libera. La compri?";
@@ -340,6 +431,12 @@ function disegnaCentro() {
             aggiungiPulsante(azioni, "Non comprare", "",
                 function () { invia("/rifiutaAcquisto"); });
             break;
+        case "ASTA":
+            disegnaAzioniAsta(azioni);
+            break;
+        case "SALDO_DEBITO":
+            disegnaAzioniDebito(azioni, giocatore);
+            break;
         case "FINE_TURNO":
             aggiungiPulsante(azioni, "Fine turno →", "btn-rosso", function () { invia("/fineTurno"); });
             break;
@@ -350,6 +447,68 @@ function disegnaCentro() {
 
     document.getElementById("termina-button").disabled = terminata;
     document.getElementById("ultimo-evento").textContent = ultimoEvento();
+}
+
+/* ------------------------------------------------------------------ */
+/* Asta e saldo del debito                                             */
+/* ------------------------------------------------------------------ */
+
+function statoAsta() {
+    var asta = stato.asta;
+    var casella = stato.caselle[asta.posizione];
+    var offerente = stato.giocatori[asta.offerenteDiTurno];
+    var migliore = asta.migliorOfferente === null ? "nessuna offerta"
+        : "offerta più alta " + asta.offertaMassima + "€ di " + stato.giocatori[asta.migliorOfferente].nome;
+    return casella.testo + " all'asta (valore " + casella.costo + "€) · " + migliore
+        + " · contanti di " + offerente.nome + ": " + offerente.portafoglio + "€";
+}
+
+function disegnaAzioniAsta(azioni) {
+    var asta = stato.asta;
+    var offerente = stato.giocatori[asta.offerenteDiTurno];
+    var offertaMinima = asta.offertaMassima + 1;
+    var puoOffrire = offerente.portafoglio >= offertaMinima;
+
+    var campo = document.createElement("label");
+    campo.className = "campo-offerta";
+    campo.innerHTML = '<input type="number" id="importo-offerta" aria-label="Importo dell\'offerta"><span>€</span>';
+    var importo = campo.querySelector("input");
+    importo.min = offertaMinima;
+    importo.max = offerente.portafoglio;
+    importo.value = Math.min(Math.max(offertaMinima, asta.offertaMassima + 10), offerente.portafoglio);
+    importo.disabled = !puoOffrire;
+    importo.addEventListener("keydown", function (evento) {
+        if (evento.key === "Enter" && puoOffrire) {
+            invia("/offerta", { importo: importo.value });
+        }
+    });
+    azioni.appendChild(campo);
+
+    aggiungiPulsante(azioni, "Offri", "btn-rosso", function () {
+        invia("/offerta", { importo: importo.value });
+    }, !puoOffrire);
+    aggiungiPulsante(azioni, "Ritirati", "", function () {
+        invia("/ritiratiDallAsta");
+    });
+}
+
+function statoDebito(giocatore) {
+    var debito = stato.debito;
+    var creditore = debito.creditore === null ? "alla banca" : "a " + stato.giocatori[debito.creditore].nome;
+    return "Deve pagare " + debito.importo + "€ " + creditore + " ma ha " + giocatore.portafoglio
+        + "€ in contanti. Apri le tue proprietà per vendere edifici o ipotecarle.";
+}
+
+function disegnaAzioniDebito(azioni, giocatore) {
+    var debito = stato.debito;
+    aggiungiPulsante(azioni, "Paga " + debito.importo + "€", "btn-rosso", function () {
+        invia("/pagaDebito");
+    }, giocatore.portafoglio < debito.importo);
+    aggiungiPulsante(azioni, "Dichiara bancarotta", "", function () {
+        if (confirm("Dichiarare bancarotta? Uscirai dal gioco.")) {
+            invia("/dichiaraBancarotta");
+        }
+    });
 }
 
 function ultimoEvento() {
@@ -575,8 +734,8 @@ function disegnaContratto() {
 
     var azioni = document.getElementById("azioni-casella");
     var motivi = [];
-    var possedutaDalGiocatoreDiTurno = casella.proprietario === stato.giocatoreCorrente && stato.fase !== "TERMINATA";
-    if (possedutaDalGiocatoreDiTurno) {
+    var gestibile = casella.proprietario === stato.giocatoreCorrente && FASI_DI_GESTIONE.indexOf(stato.fase) >= 0;
+    if (gestibile) {
         if (casella.tipo === "TERRENO" && !casella.ipotecata) {
             var edificio = casella.casette === 4 ? "Costruisci albergo" : "Costruisci casa";
             aggiungiAzioneContratto(azioni, motivi, edificio + " (" + casella.costoCasetta + "€)", "btn-verde",
@@ -628,6 +787,9 @@ function portafoglioCorrente() {
 }
 
 function motivoNonCostruibile(casella) {
+    if (stato.fase === "SALDO_DEBITO") {
+        return "Non puoi costruire mentre hai un debito da saldare.";
+    }
     var gruppo = terreniDelGruppo(casella);
     if (!possiedeTuttoIlGruppo(casella)) {
         return "Serve il gruppo completo (" + gruppo.length + " terreni " + casella.colore + ").";
@@ -676,6 +838,9 @@ function motivoNonIpotecabile(casella) {
 }
 
 function motivoNonRiscattabile(casella) {
+    if (stato.fase === "SALDO_DEBITO") {
+        return "Non puoi riscattare ipoteche mentre hai un debito da saldare.";
+    }
     return portafoglioCorrente() < casella.costoRiscatto ? "Non hai abbastanza denaro." : "";
 }
 

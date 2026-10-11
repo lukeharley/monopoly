@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.luca.monopoly.domain.giocatore.Giocatore;
+
 public class Tabellone {
 
 	public static final int NUMERO_CASELLE = 40;
@@ -60,46 +62,47 @@ public class Tabellone {
 		caselle.add(new Casella("Tassa di Lusso", TipoCasella.TASSA, null, 100, 0));
 		caselle.add(terreno("Parco della Vittoria", "viola", 400));
 
+		// Rendite: terreno, 1, 2, 3, 4 case, albergo (Monopoly edizione in euro)
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Vicolo Corto", 2, 10, 0, 0));
+		contratti.add(new Contratto("Vicolo Corto", 2, 10, 30, 90, 160, 250));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Vicolo Stretto", 4, 20, 0, 0));
+		contratti.add(new Contratto("Vicolo Stretto", 4, 20, 60, 180, 320, 450));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
 		contratti.add(new Contratto("Stazione Sud", 0, 0, 65, 25));
-		contratti.add(new Contratto("Bastioni Gran Sasso", 6, 30, 0, 0));
+		contratti.add(new Contratto("Bastioni Gran Sasso", 6, 30, 90, 270, 400, 550));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Viale Monterosa", 6, 30, 0, 0));
-		contratti.add(new Contratto("Viale Vesuvio", 8, 40, 0, 0));
+		contratti.add(new Contratto("Viale Monterosa", 6, 30, 90, 270, 400, 550));
+		contratti.add(new Contratto("Viale Vesuvio", 8, 40, 100, 300, 450, 600));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Via Accademia", 10, 50, 0, 0));
+		contratti.add(new Contratto("Via Accademia", 10, 50, 150, 450, 625, 750));
 		contratti.add(new Contratto("Società Elettrica", 0, 0, 50, 50));
-		contratti.add(new Contratto("Corso Ateneo", 10, 50, 0, 0));
-		contratti.add(new Contratto("Piazza Università", 12, 60, 0, 0));
+		contratti.add(new Contratto("Corso Ateneo", 10, 50, 150, 450, 625, 750));
+		contratti.add(new Contratto("Piazza Università", 12, 60, 180, 500, 700, 900));
 		contratti.add(new Contratto("Stazione Ovest", 0, 0, 65, 25));
-		contratti.add(new Contratto("Via Verdi", 14, 70, 0, 0));
+		contratti.add(new Contratto("Via Verdi", 14, 70, 200, 550, 750, 950));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Corso Raffaello", 14, 70, 0, 0));
-		contratti.add(new Contratto("Piazza Dante", 16, 80, 0, 0));
+		contratti.add(new Contratto("Corso Raffaello", 14, 70, 200, 550, 750, 950));
+		contratti.add(new Contratto("Piazza Dante", 16, 80, 220, 600, 800, 1000));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Via Marco Polo", 18, 90, 0, 0));
+		contratti.add(new Contratto("Via Marco Polo", 18, 90, 250, 700, 875, 1050));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Corso Magellano", 18, 90, 0, 0));
-		contratti.add(new Contratto("Largo Colombo", 20, 100, 0, 0));
+		contratti.add(new Contratto("Corso Magellano", 18, 90, 250, 700, 875, 1050));
+		contratti.add(new Contratto("Largo Colombo", 20, 100, 300, 750, 925, 1100));
 		contratti.add(new Contratto("Stazione Nord", 0, 0, 65, 25));
-		contratti.add(new Contratto("Viale Costantino", 22, 110, 0, 0));
-		contratti.add(new Contratto("Viale Traiano", 22, 110, 0, 0));
+		contratti.add(new Contratto("Viale Costantino", 22, 110, 330, 800, 975, 1150));
+		contratti.add(new Contratto("Viale Traiano", 22, 110, 330, 800, 975, 1150));
 		contratti.add(new Contratto("Società Acqua Potabile", 0, 0, 50, 50));
-		contratti.add(new Contratto("Piazza Giulio Cesare", 24, 120, 0, 0));
+		contratti.add(new Contratto("Piazza Giulio Cesare", 24, 120, 360, 850, 1025, 1200));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Via Roma", 26, 130, 0, 0));
-		contratti.add(new Contratto("Corso Impero", 26, 130, 0, 0));
+		contratti.add(new Contratto("Via Roma", 26, 130, 390, 900, 1100, 1275));
+		contratti.add(new Contratto("Corso Impero", 26, 130, 390, 900, 1100, 1275));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Largo Augusto", 28, 150, 0, 0));
+		contratti.add(new Contratto("Largo Augusto", 28, 150, 450, 1000, 1200, 1400));
 		contratti.add(new Contratto("Stazione Est", 0, 0, 65, 25));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Viale dei Giardini", 35, 175, 0, 0));
+		contratti.add(new Contratto("Viale dei Giardini", 35, 175, 500, 1100, 1300, 1500));
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Parco della Vittoria", 50, 200, 0, 0));
+		contratti.add(new Contratto("Parco della Vittoria", 50, 200, 600, 1400, 1700, 2000));
 
 		imprevisti.add(new Imprevisto("Andate sino al Largo Colombo: se passate dal Via ritirate 200 euro.",
 				EffettoCarta.VAI_A, 24));
@@ -205,6 +208,27 @@ public class Tabellone {
 		return caselle.stream()
 				.filter(casella -> casella.getTipo() == tipo)
 				.collect(Collectors.toList());
+	}
+
+	public int getPosizione(Casella casella) {
+		return caselle.indexOf(casella);
+	}
+
+	public List<Casella> getProprietaDi(Giocatore giocatore) {
+		return caselle.stream()
+				.filter(casella -> casella.getProprietario() == giocatore)
+				.collect(Collectors.toList());
+	}
+
+	public boolean possiedeTuttoIlGruppo(Giocatore giocatore, String colore) {
+		return getCaselleDelColore(colore).stream()
+				.allMatch(casella -> casella.getProprietario() == giocatore);
+	}
+
+	public int contaProprietaDelTipo(Giocatore giocatore, TipoCasella tipo) {
+		return (int) caselle.stream()
+				.filter(casella -> casella.getTipo() == tipo && casella.getProprietario() == giocatore)
+				.count();
 	}
 
 	public List<Casetta> getCasette() {

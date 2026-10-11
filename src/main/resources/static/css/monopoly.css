@@ -597,6 +597,12 @@ label.campo {
 .lato-t .proprietario { bottom: calc(17px + 4px); }
 .lato-l .proprietario { right: auto; left: 4px; }
 
+.casella:focus-visible {
+    outline: 3px solid var(--oro);
+    outline-offset: -3px;
+    z-index: 3;
+}
+
 .casella.selezionata::after {
     content: "";
     position: absolute;
@@ -779,6 +785,39 @@ label.campo {
     font-size: 15px;
     font-weight: 500;
     color: var(--tenue);
+    max-width: 380px;
+    text-wrap: pretty;
+}
+
+/* Importo dell'offerta durante l'asta */
+.campo-offerta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1.5px solid var(--inchiostro);
+    border-radius: 6px;
+    background: var(--carta-chiara);
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.campo-offerta input {
+    width: 72px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: var(--inchiostro);
+    text-align: right;
+}
+
+.campo-offerta:focus-within {
+    box-shadow: 0 0 0 3px var(--oro);
+}
+
+/* Mentre il server risponde i pulsanti non accettano altri clic */
+.in-attesa .btn, .in-attesa .btn-chiaro {
+    cursor: progress;
 }
 
 .errore {
@@ -1185,6 +1224,10 @@ label.campo {
     display: flex;
     gap: 10px;
     flex: none;
+}
+
+.pannello-piede form {
+    margin: 0;
 }
 
 .btn-chiaro, .btn-link-chiaro {
