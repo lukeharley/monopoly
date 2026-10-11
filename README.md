@@ -49,10 +49,13 @@ DB_PASSWORD=la-tua-password mvn spring-boot:run
 <details>
 <summary>Online con GitHub Codespaces</summary>
 
-1. **Code → Codespaces → Create codespace**.
-2. Nel terminale: `mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
-3. Apri la porta **8080** dalla scheda *Ports*. Per far giocare altre persone imposta la porta su **Public**
-   e condividi il link.
+[![Apri in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/lukeharley/monopoly)
+
+1. Apri il Codespace con il pulsante qui sopra (oppure **Code → Codespaces → Create codespace**).
+2. La configurazione in [`.devcontainer`](.devcontainer/devcontainer.json) installa Java e Maven e avvia il gioco
+   da sola; alla fine si apre il browser sulla porta **8080**.
+3. Per far giocare altre persone: scheda *Ports* → tasto destro sulla porta 8080 →
+   **Port Visibility → Public**, poi condividi il link.
 </details>
 
 ## Come si gioca

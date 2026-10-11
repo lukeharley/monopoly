@@ -1,0 +1,24 @@
+{
+  "name": "Monopoly",
+  "image": "mcr.microsoft.com/devcontainers/java:17",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "none",
+      "installMaven": "true"
+    }
+  },
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "Monopoly",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "mvn -B -q -DskipTests package",
+  "postAttachCommand": "mvn -B spring-boot:run -Dspring-boot.run.profiles=dev",
+  "customizations": {
+    "vscode": {
+      "extensions": ["vscjava.vscode-java-pack"]
+    }
+  }
+}
