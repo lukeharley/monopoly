@@ -58,7 +58,7 @@
                         <img th:src="@{'/images/segnalini/' + ${#strings.toLowerCase(giocatore.segnalino)} + '.png'}" alt="">
                         <div class="posto-testo">
                             <div class="posto-nome" th:text="${giocatore.nome}"></div>
-                            <div class="tenue">[[${giocatore.segnalino}]] · portafoglio [[${giocatore.portafoglio}]]€</div>
+                            <div class="tenue">[[${giocatore.segnalino}]] · portafoglio [[${portafoglioIniziale}]]€</div>
                         </div>
                         <form th:action="@{/rimuoviGiocatore}" method="post">
                             <input type="hidden" name="segnalino" th:value="${giocatore.valoreSegnalino}">

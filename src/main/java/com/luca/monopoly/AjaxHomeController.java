@@ -2,6 +2,7 @@ package com.luca.monopoly;
 
 import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.service.MonopolyService;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,14 +26,16 @@ public class AjaxHomeController {
         this.monopolyService = monopolyService;
     }
 
-    /** Con {@code versione} uguale a quella attuale risponde 204: nulla è cambiato. */
+    /**
+     * Con {@code versione} uguale a quella attuale risponde 204 senza costruire la
+     * vista: nulla è cambiato. Le risposte non vanno mai in cache, perché lo stato
+     * cambia a ogni mossa.
+     */
     @GetMapping("/stato")
     public ResponseEntity<StatoPartitaView> stato(@RequestParam(required = false) Long versione) {
-        StatoPartitaView stato = monopolyService.leggi(StatoPartitaView::da);
-        if (versione != null && versione == stato.versione()) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(stato);
+        return monopolyService.leggiSeCambiata(versione, StatoPartitaView::da)
+                .map(stato -> ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(stato))
+                .orElseGet(() -> ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build());
     }
 
     @PostMapping("/lanciaDadi")

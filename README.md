@@ -38,12 +38,17 @@ già escluso da git e letto dalla configurazione di avvio):
 | Variabile | Predefinito |
 |---|---|
 | `DB_URL` | `jdbc:mysql://localhost:3306/monopoly?createDatabaseIfNotExist=true` |
-| `DB_USERNAME` | `luke` |
+| `DB_USERNAME` | *(obbligatoria)* |
 | `DB_PASSWORD` | *(vuota)* |
 
 ```bash
-DB_PASSWORD=la-tua-password mvn spring-boot:run
+DB_USERNAME=utente DB_PASSWORD=la-tua-password mvn spring-boot:run
 ```
+
+Lo schema è gestito da **Flyway** (`src/main/resources/db/migration`). Al primo avvio su un database
+creato con versioni precedenti, la tabella della lobby viene ricreata: i giocatori registrati ma non
+ancora in partita vanno reinseriti. Se manca `DB_USERNAME`, l'avvio fallisce con
+`Access denied for user '${DB_USERNAME}'`.
 </details>
 
 <details>

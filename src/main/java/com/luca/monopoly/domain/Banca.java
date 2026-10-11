@@ -5,13 +5,12 @@ package com.luca.monopoly.domain;
  */
 public class Banca {
 
-    private int casetteDisponibili;
-    private int alberghiDisponibili;
+    /** Pezzi contenuti nella scatola del gioco. */
+    public static final int CASETTE_TOTALI = 32;
+    public static final int ALBERGHI_TOTALI = 12;
 
-    public Banca(int casetteDisponibili, int alberghiDisponibili) {
-        this.casetteDisponibili = casetteDisponibili;
-        this.alberghiDisponibili = alberghiDisponibili;
-    }
+    private int casetteDisponibili = CASETTE_TOTALI;
+    private int alberghiDisponibili = ALBERGHI_TOTALI;
 
     public int getCasetteDisponibili() {
         return casetteDisponibili;

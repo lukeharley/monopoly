@@ -1,11 +1,9 @@
 package com.luca.monopoly;
 
-
 public class HomeForm {
 
     private String nome;
 
-    private int portafoglio;
 
     private int segnalino;
 
@@ -15,14 +13,6 @@ public class HomeForm {
 
     public void setNome(String nome) {
         this.nome = nome;
-    }
-
-    public int getPortafoglio() {
-        return portafoglio;
-    }
-
-    public void setPortafoglio(int portafoglio) {
-        this.portafoglio = portafoglio;
     }
 
     public int getSegnalino() {

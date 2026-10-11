@@ -11,26 +11,24 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MonopolyTest {
 
-	private Monopoly monopoly;
+	private Tabellone tabellone;
 
 	@BeforeEach
 	void setup() {
-		monopoly = new Monopoly();
+		tabellone = new Tabellone();
 	}
 
 	@Order(1)
 	@Test
 	void test_inizializzazione_monopoly() {
 
-		assertNotNull(monopoly);
+		assertNotNull(tabellone);
 
 	}
 
 	@Order(2)
 	@Test
 	void test_caselle() {
-
-		Tabellone tabellone = monopoly.getTabellone();
 
 		List<Casella> caselle = tabellone.getCaselle();
 		assertEquals(40, caselle.size());
@@ -59,8 +57,7 @@ public class MonopolyTest {
 	@Test
 	void test_segnalini() {
 
-		List<Segnalini> segnalini = monopoly.getSegnalini();
-		assertEquals(8, segnalini.size());
+		assertEquals(8, Segnalini.values().length);
 
 	}
 
@@ -68,7 +65,6 @@ public class MonopolyTest {
 	@Test
 	void test_contratti() {
 
-		Tabellone tabellone = monopoly.getTabellone();
 		List<Contratto> contratti = tabellone.getContratti();
 
 		assertEquals(40, contratti.size());
@@ -97,7 +93,7 @@ public class MonopolyTest {
 	@Test
 	void test_imprevisti() {
 
-		List<Imprevisto> imprevisti = monopoly.getTabellone().getImprevisti();
+		List<Imprevisto> imprevisti = tabellone.getImprevisti();
 		assertEquals(16, imprevisti.size());
 		assertEquals("Andate sino al Largo Colombo: se passate dal Via ritirate 200 euro.",
 				imprevisti.get(0).getTesto());
@@ -108,7 +104,7 @@ public class MonopolyTest {
 	@Test
 	void test_probabilita() {
 
-		List<Probabilita> probabilita = monopoly.getTabellone().getProbabilita();
+		List<Probabilita> probabilita = tabellone.getProbabilita();
 		assertEquals(16, probabilita.size());
 		assertEquals("Ritornate al Vicolo Corto.", probabilita.get(0).getTesto());
 
@@ -118,31 +114,24 @@ public class MonopolyTest {
 	@Test
 	void test_casette() {
 
-		Tabellone tabellone = monopoly.getTabellone();
-
-		List<Casetta> casette = tabellone.getCasette();
-		assertEquals(32, casette.size());
+		assertEquals(32, Banca.CASETTE_TOTALI);
+		assertEquals(32, new Banca().getCasetteDisponibili());
 	}
 
 	@Order(8)
 	@Test
 	void test_alberghi() {
 
-		Tabellone tabellone = monopoly.getTabellone();
-
-		List<Albergo> alberghi = tabellone.getAlberghi();
-		assertEquals(12, alberghi.size());
+		assertEquals(12, Banca.ALBERGHI_TOTALI);
+		assertEquals(12, new Banca().getAlberghiDisponibili());
 	}
 
 	@Order(9)
 	@Test
 	void test_dadi() {
 
-		List<Dado> dadi = monopoly.getDadi();
-		assertEquals(2, dadi.size());
-
-		Dado primoDado = dadi.get(0);
-		assertEquals(6, primoDado.getNumeroFacce());
+		assertEquals(2, Partita.NUMERO_DADI);
+		assertEquals(6, new Dado().getNumeroFacce());
 	}
 
 }
