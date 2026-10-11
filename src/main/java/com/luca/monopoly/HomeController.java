@@ -38,7 +38,6 @@ public class HomeController {
         for (JpaGiocatore jpaGiocatore : jpaGiocatori) {
             GiocatoreView giocatoreView = new GiocatoreView();
             giocatoreView.setNome(jpaGiocatore.getNome());
-            giocatoreView.setPortafoglio(jpaGiocatore.getPortafoglio());
             giocatoreView.setSegnalino(jpaGiocatore.getSegnalino().getNome());
             giocatoreView.setValoreSegnalino(jpaGiocatore.getSegnalino().ordinal());
 
@@ -50,7 +49,7 @@ public class HomeController {
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", new HomeForm());
         }
-        model.addAttribute("dadi", monopolyService.getMonopoly().getDadi().size());
+        model.addAttribute("dadi", Partita.NUMERO_DADI);
         model.addAttribute("partitaInCorso", monopolyService.isPartitaPresente());
 
         List<SegnalinoView> segnalini = new ArrayList<>();
@@ -75,14 +74,10 @@ public class HomeController {
     public String aggiungiGiocatore(HomeForm form, RedirectAttributes redirectAttributes) {
 
         try {
-            if (monopolyService.isPartitaPresente()) {
-                throw new MossaNonValidaException(
-                        "La partita è già iniziata: resettala per aggiungere nuovi giocatori.");
-            }
             if (form.getSegnalino() < 0 || form.getSegnalino() >= Segnalini.values().length) {
                 throw new MossaNonValidaException("Segnalino non valido.");
             }
-            giocatoreService.aggiungiGiocatore(form.getNome(), Segnalini.values()[form.getSegnalino()]);
+            monopolyService.aggiungiGiocatore(form.getNome(), Segnalini.values()[form.getSegnalino()]);
         } catch (MossaNonValidaException eccezione) {
             redirectAttributes.addFlashAttribute("messaggio", eccezione.getMessage());
             redirectAttributes.addFlashAttribute("form", form);

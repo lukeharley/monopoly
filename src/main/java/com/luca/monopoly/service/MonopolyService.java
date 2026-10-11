@@ -1,7 +1,6 @@
 package com.luca.monopoly.service;
 
 import com.luca.monopoly.domain.FasePartita;
-import com.luca.monopoly.domain.Monopoly;
 import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.domain.PartitaAssenteException;
@@ -13,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -24,11 +24,14 @@ import java.util.function.Consumer;
  * versione: il client la rimanda con le mosse successive e, se nel frattempo
  * qualcun altro ha giocato, la mossa viene rifiutata invece di essere applicata
  * a uno stato che il giocatore non ha visto (concorrenza ottimistica).
+ *
+ * Anche le modifiche della lobby passano da qui, sotto lo stesso lock: nessun
+ * giocatore può essere registrato mentre la partita viene avviata. Le mosse non
+ * toccano il database, quindi il lock non attende mai l'I/O durante il gioco.
  */
 @Service
 public class MonopolyService {
 
-    private final Monopoly monopoly = new Monopoly();
     private final GiocatoreService giocatoreService;
 
     private Partita partita;
@@ -38,12 +41,24 @@ public class MonopolyService {
         this.giocatoreService = giocatoreService;
     }
 
-    public Monopoly getMonopoly() {
-        return monopoly;
-    }
-
     public synchronized boolean isPartitaPresente() {
         return partita != null;
+    }
+
+    public synchronized void aggiungiGiocatore(String nome, Segnalini segnalino) {
+        if (partita != null) {
+            throw new MossaNonValidaException(
+                    "La partita è già iniziata: resettala per aggiungere nuovi giocatori.");
+        }
+        giocatoreService.aggiungiGiocatore(nome, segnalino);
+    }
+
+    public synchronized void rimuoviGiocatore(Segnalini segnalino) {
+        if (partita != null) {
+            throw new MossaNonValidaException(
+                    "La partita è già iniziata: resettala per togliere giocatori dal tavolo.");
+        }
+        giocatoreService.rimuoviGiocatore(segnalino);
     }
 
     public synchronized void avviaPartita() {
@@ -59,13 +74,27 @@ public class MonopolyService {
 
         partita = new Partita(giocatori);
         versione++;
-        giocatoreService.salvaStato(partita.getGiocatori());
     }
 
     /** Legge la partita in corso producendo, sotto lock, una vista immutabile. */
     public synchronized <T> T leggi(BiFunction<Partita, Long, T> vista) {
         verificaPartitaPresente();
         return vista.apply(partita, versione);
+    }
+
+    /**
+     * Come {@link #leggi}, ma se il client ha già la versione attuale non costruisce
+     * la vista: è il caso più frequente del polling.
+     *
+     * @param versioneNota versione già vista dal client, oppure null
+     * @return la vista, oppure vuoto se la partita non è cambiata
+     */
+    public synchronized <T> Optional<T> leggiSeCambiata(Long versioneNota, BiFunction<Partita, Long, T> vista) {
+        verificaPartitaPresente();
+        if (versioneNota != null && versioneNota == versione) {
+            return Optional.empty();
+        }
+        return Optional.of(vista.apply(partita, versione));
     }
 
     /**
@@ -80,7 +109,6 @@ public class MonopolyService {
         }
         mossa.accept(partita);
         versione++;
-        giocatoreService.salvaStato(partita.getGiocatori());
         return vista.apply(partita, versione);
     }
 
@@ -88,15 +116,6 @@ public class MonopolyService {
     public synchronized void nuovaPartita() {
         partita = null;
         versione++;
-        giocatoreService.azzeraGiocatori();
-    }
-
-    public synchronized void rimuoviGiocatore(Segnalini segnalino) {
-        if (partita != null) {
-            throw new MossaNonValidaException(
-                    "La partita è già iniziata: resettala per togliere giocatori dal tavolo.");
-        }
-        giocatoreService.rimuoviGiocatore(segnalino);
     }
 
     public synchronized void resettaPartita() {

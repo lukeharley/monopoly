@@ -23,6 +23,7 @@ import com.luca.monopoly.domain.giocatore.Giocatore;
 public class Partita {
 
 	public static final int PORTAFOGLIO_INIZIALE = 1500;
+	public static final int NUMERO_DADI = 2;
 	public static final int PREMIO_VIA = 200;
 	public static final int MULTA_PRIGIONE = 125;
 	public static final int MAX_TURNI_IN_PRIGIONE = 3;
@@ -34,9 +35,9 @@ public class Partita {
 			FasePartita.DECISIONE_ACQUISTO, FasePartita.FINE_TURNO, FasePartita.SALDO_DEBITO);
 
 	private final Tabellone tabellone = new Tabellone();
-	private final Banca banca = new Banca(tabellone.getCasette().size(), tabellone.getAlberghi().size());
+	private final Banca banca = new Banca();
 	private final List<Giocatore> giocatori;
-	private final List<Dado> dadi = List.of(new Dado(), new Dado());
+	private final List<Dado> dadi = Collections.nCopies(NUMERO_DADI, new Dado());
 	private final Mazzo<Imprevisto> mazzoImprevisti;
 	private final Mazzo<Probabilita> mazzoProbabilita;
 	private final CalcolatoreAffitto calcolatoreAffitto = new CalcolatoreAffitto(tabellone);

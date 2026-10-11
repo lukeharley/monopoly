@@ -11,9 +11,6 @@ public class Tabellone {
 	public static final int NUMERO_CASELLE = 40;
 	public static final int POSIZIONE_PRIGIONE = 10;
 
-	private final int NUMERO_MAX_PEZZI_CASETTA = 32;
-	private final int NUMERO_MAX_PEZZI_ALBERGO = 12;
-
 	private final List<Contratto> contratti = new ArrayList<>();
 	private final List<Casella> caselle = new ArrayList<>();
 	private final List<Imprevisto> imprevisti = new ArrayList<>();
@@ -230,27 +227,4 @@ public class Tabellone {
 				.filter(casella -> casella.getTipo() == tipo && casella.getProprietario() == giocatore)
 				.count();
 	}
-
-	public List<Casetta> getCasette() {
-
-		List<Casetta> listaDiCasette = new ArrayList<>();
-
-		for (int i = 1; i <= NUMERO_MAX_PEZZI_CASETTA; i++) {
-			listaDiCasette.add(new Casetta());
-		}
-
-		return listaDiCasette;
-	}
-
-	public List<Albergo> getAlberghi() {
-
-		List<Albergo> listaDiAlberghi = new ArrayList<>();
-
-		for (int i = 1; i <= NUMERO_MAX_PEZZI_ALBERGO; i++) {
-			listaDiAlberghi.add(new Albergo());
-		}
-
-		return listaDiAlberghi;
-	}
-
 }

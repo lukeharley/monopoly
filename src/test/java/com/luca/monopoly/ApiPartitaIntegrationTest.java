@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +30,12 @@ class ApiPartitaIntegrationTest {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private Environment environment;
 
 	@BeforeEach
 	void resetta() throws Exception {
@@ -133,5 +141,98 @@ class ApiPartitaIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.fase").value("TERMINATA"))
 				.andExpect(jsonPath("$.vincitore").isNumber());
+	}
+
+	// --- Sicurezza e integrità (PR 1 del piano di review) ---
+
+	@Test
+	void console_h2_disattivata_in_modo_esplicito() throws Exception {
+		// devtools la abilita solo se la proprietà non è impostata: deve restare esplicita
+		assertEquals("false", environment.getProperty("spring.h2.console.enabled"));
+		mockMvc.perform(get("/h2-console/")).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void segnalino_salvato_per_nome() throws Exception {
+		aggiungiGiocatore("Luca", 0);
+		assertEquals("CANE", jdbcTemplate.queryForObject("SELECT segnalino FROM giocatore", String.class));
+	}
+
+	@Test
+	void ordine_dei_turni_uguale_all_ordine_di_registrazione() throws Exception {
+		aggiungiGiocatore("Sara", 7);
+		aggiungiGiocatore("Luca", 0);
+		aggiungiGiocatore("Mario", 3);
+		mockMvc.perform(post("/avviaPartita")).andExpect(status().is3xxRedirection());
+
+		JsonNode giocatori = stato().get("giocatori");
+		assertEquals("Sara", giocatori.get(0).get("nome").asText());
+		assertEquals("Luca", giocatori.get(1).get("nome").asText());
+		assertEquals("Mario", giocatori.get(2).get("nome").asText());
+	}
+
+	@Test
+	void giocatori_non_aggiungibili_a_partita_iniziata() throws Exception {
+		avviaPartitaConDueGiocatori();
+		mockMvc.perform(post("/").param("nome", "Anna").param("segnalino", "2"))
+				.andExpect(flash().attribute("messaggio",
+						"La partita è già iniziata: resettala per aggiungere nuovi giocatori."));
+		assertEquals(2, stato().get("giocatori").size());
+	}
+
+	@Test
+	void post_da_un_altro_sito_rifiutato_con_403() throws Exception {
+		avviaPartitaConDueGiocatori();
+
+		mockMvc.perform(post("/resettaPartita").header("Sec-Fetch-Site", "cross-site"))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.errore").exists());
+		mockMvc.perform(post("/lanciaDadi").header("Sec-Fetch-Site", "same-site"))
+				.andExpect(status().isForbidden());
+		// browser senza Sec-Fetch-Site: decide l'header Origin
+		mockMvc.perform(post("/resettaPartita")
+				.header("Origin", "https://sito-malevolo.example").header("Host", "localhost:8080"))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/resettaPartita").header("Origin", "null").header("Host", "localhost:8080"))
+				.andExpect(status().isForbidden());
+
+		// la partita è ancora lì
+		mockMvc.perform(get("/stato")).andExpect(status().isOk());
+	}
+
+	@Test
+	void post_dalla_stessa_origine_accettato() throws Exception {
+		avviaPartitaConDueGiocatori();
+
+		mockMvc.perform(post("/lanciaDadi").header("Sec-Fetch-Site", "same-origin"))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/fineTurno")
+				.header("Origin", "http://localhost:8080").header("Host", "localhost:8080"))
+				// 200 o 422 a seconda dei dadi: conta solo che il filtro l'abbia lasciata passare
+				.andExpect(risultato -> assertNotEquals(403, risultato.getResponse().getStatus()));
+		// dietro il proxy dei Codespaces l'host pubblico arriva in X-Forwarded-Host
+		mockMvc.perform(post("/terminaPartita")
+				.header("Origin", "https://gioco-8080.app.github.dev")
+				.header("Host", "localhost:8080")
+				.header("X-Forwarded-Host", "gioco-8080.app.github.dev"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void get_da_un_altro_sito_ammessa() throws Exception {
+		avviaPartitaConDueGiocatori();
+		mockMvc.perform(get("/stato").header("Sec-Fetch-Site", "cross-site")).andExpect(status().isOk());
+	}
+
+	@Test
+	void stato_mai_in_cache() throws Exception {
+		avviaPartitaConDueGiocatori();
+		long versione = stato().get("versione").asLong();
+
+		mockMvc.perform(get("/stato"))
+				.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+		mockMvc.perform(get("/stato").param("versione", String.valueOf(versione)))
+				.andExpect(status().isNoContent())
+				.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
 	}
 }

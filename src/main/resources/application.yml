@@ -9,21 +9,24 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      # lo schema lo crea Flyway (src/main/resources/db/migration): Hibernate lo verifica soltanto
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         "[format_sql]": false
         "[storage_engine]": innodb
-    generate-ddl: true
   datasource:
     # Credenziali da variabili d'ambiente (in VS Code: file .env, letto da launch.json ed escluso da git)
     url: ${DB_URL:jdbc:mysql://localhost:3306/monopoly?createDatabaseIfNotExist=true}
-    username: ${DB_USERNAME:luke}
+    username: ${DB_USERNAME}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  main:
-    allow-bean-definition-overriding: true
+  flyway:
+    # un database creato prima di Flyway non ha la tabella di storico: si parte dalla versione 0
+    # così V1 viene comunque eseguita e ricrea la tabella della lobby
+    baseline-on-migrate: true
+    baseline-version: 0
   web:
     resources:
       chain:

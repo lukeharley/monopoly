@@ -2,7 +2,13 @@ package com.luca.monopoly.repository;
 
 import com.luca.monopoly.domain.Segnalini;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+/**
+ * Giocatore registrato nella lobby. Lo stato di gioco (denaro, posizione) vive
+ * solo nella partita in memoria: qui si conservano nome e segnalino.
+ */
 @Entity
 @Table(name = "giocatore")
 public class JpaGiocatore {
@@ -12,17 +18,22 @@ public class JpaGiocatore {
     @Column(name = "id")
     private Integer id;
 
-    @Column(name = "nome")
+    @Column(name = "nome", nullable = false, length = 30)
     private String nome;
 
-    @Column(name = "segnalino", unique = true)
+    /*
+     * Salvato per nome ("CANE") e non per posizione nell'enum: riordinare o aggiungere
+     * segnalini non cambia il significato dei dati. VARCHAR esplicito perché Hibernate 6
+     * userebbe il tipo ENUM nativo di MySQL, diverso dalla colonna creata da Flyway.
+     */
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "segnalino", nullable = false, unique = true, length = 20)
     private Segnalini segnalino;
 
-    @Column(name = "portafoglio")
-    private Integer portafoglio;
-
-    @Column(name = "posizione")
-    private Integer posizione;
+    public Integer getId() {
+        return id;
+    }
 
     public String getNome() {
         return nome;
@@ -30,30 +41,6 @@ public class JpaGiocatore {
 
     public void setNome(String nome) {
         this.nome = nome;
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public Integer getPortafoglio() {
-        return portafoglio;
-    }
-
-    public void setPortafoglio(Integer portafoglio) {
-        this.portafoglio = portafoglio;
-    }
-
-    public Integer getPosizione() {
-        return posizione;
-    }
-
-    public void setPosizione(Integer posizione) {
-        this.posizione = posizione;
     }
 
     public Segnalini getSegnalino() {

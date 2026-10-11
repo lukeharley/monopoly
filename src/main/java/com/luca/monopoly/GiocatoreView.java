@@ -4,7 +4,6 @@ public class GiocatoreView {
 
     private String nome;
 
-    private int portafoglio;
 
     private String segnalino;
 
@@ -16,14 +15,6 @@ public class GiocatoreView {
 
     public void setNome(String nome) {
         this.nome = nome;
-    }
-
-    public int getPortafoglio() {
-        return portafoglio;
-    }
-
-    public void setPortafoglio(int portafoglio) {
-        this.portafoglio = portafoglio;
     }
 
     public String getSegnalino() {
