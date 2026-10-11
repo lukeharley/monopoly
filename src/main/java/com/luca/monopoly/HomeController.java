@@ -6,8 +6,11 @@ import com.luca.monopoly.domain.Segnalini;
 import com.luca.monopoly.repository.JpaGiocatore;
 import com.luca.monopoly.service.GiocatoreService;
 import com.luca.monopoly.service.MonopolyService;
+import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,7 +42,7 @@ public class HomeController {
             GiocatoreView giocatoreView = new GiocatoreView();
             giocatoreView.setNome(jpaGiocatore.getNome());
             giocatoreView.setSegnalino(jpaGiocatore.getSegnalino().getNome());
-            giocatoreView.setValoreSegnalino(jpaGiocatore.getSegnalino().ordinal());
+            giocatoreView.setValoreSegnalino(jpaGiocatore.getSegnalino().name());
 
             giocatori.add(giocatoreView);
             segnaliniScelti.add(jpaGiocatore.getSegnalino());
@@ -53,12 +56,12 @@ public class HomeController {
         model.addAttribute("partitaInCorso", monopolyService.isPartitaPresente());
 
         List<SegnalinoView> segnalini = new ArrayList<>();
-        Integer segnalinoProposto = null;
+        String segnalinoProposto = null;
         for (Segnalini segnalino : Segnalini.values()) {
             boolean preso = segnaliniScelti.contains(segnalino);
-            segnalini.add(new SegnalinoView(segnalino.ordinal(), segnalino.getNome(), preso));
+            segnalini.add(new SegnalinoView(segnalino.name(), segnalino.getNome(), preso));
             if (!preso && segnalinoProposto == null) {
-                segnalinoProposto = segnalino.ordinal();
+                segnalinoProposto = segnalino.name();
             }
         }
 
@@ -71,19 +74,29 @@ public class HomeController {
     }
 
     @PostMapping("/")
-    public String aggiungiGiocatore(HomeForm form, RedirectAttributes redirectAttributes) {
+    public String aggiungiGiocatore(@Valid HomeForm form, BindingResult validazione,
+            RedirectAttributes redirectAttributes) {
 
         try {
-            if (form.getSegnalino() < 0 || form.getSegnalino() >= Segnalini.values().length) {
-                throw new MossaNonValidaException("Segnalino non valido.");
+            if (validazione.hasErrors()) {
+                throw new MossaNonValidaException(messaggioDiErrore(validazione));
             }
-            monopolyService.aggiungiGiocatore(form.getNome(), Segnalini.values()[form.getSegnalino()]);
+            monopolyService.aggiungiGiocatore(form.getNome(), form.getSegnalino());
         } catch (MossaNonValidaException eccezione) {
             redirectAttributes.addFlashAttribute("messaggio", eccezione.getMessage());
             redirectAttributes.addFlashAttribute("form", form);
         }
 
         return "redirect:/";
+    }
+
+    /** Il primo errore del form; un valore non convertibile (segnalino inesistente) ha un messaggio proprio. */
+    private static String messaggioDiErrore(BindingResult validazione) {
+        FieldError errore = validazione.getFieldError();
+        if (errore == null || errore.isBindingFailure()) {
+            return "Segnalino non valido.";
+        }
+        return errore.getDefaultMessage();
     }
 
     @PostMapping("/avviaPartita")
@@ -97,12 +110,9 @@ public class HomeController {
     }
 
     @PostMapping("/rimuoviGiocatore")
-    public String rimuoviGiocatore(@RequestParam int segnalino, RedirectAttributes redirectAttributes) {
+    public String rimuoviGiocatore(@RequestParam Segnalini segnalino, RedirectAttributes redirectAttributes) {
         try {
-            if (segnalino < 0 || segnalino >= Segnalini.values().length) {
-                throw new MossaNonValidaException("Segnalino non valido.");
-            }
-            monopolyService.rimuoviGiocatore(Segnalini.values()[segnalino]);
+            monopolyService.rimuoviGiocatore(segnalino);
         } catch (MossaNonValidaException eccezione) {
             redirectAttributes.addFlashAttribute("messaggio", eccezione.getMessage());
         }

@@ -17,8 +17,6 @@ import java.util.List;
 @Service
 public class GiocatoreService {
 
-    public static final int LUNGHEZZA_MASSIMA_NOME = 30;
-
     private static final String SEGNALINO_GIA_SCELTO = "Il segnalino selezionato è già stato scelto.";
 
     private final JpaGiocatoreRepository jpaGiocatoreRepository;
@@ -32,15 +30,9 @@ public class GiocatoreService {
         return jpaGiocatoreRepository.findAllByOrderByIdAsc();
     }
 
+    /** Nome e segnalino arrivano già validati dal form ({@code HomeForm}). */
     @Transactional
     public void aggiungiGiocatore(String nome, Segnalini segnalino) {
-        if (nome == null || nome.isBlank()) {
-            throw new MossaNonValidaException("Inserire il nome del giocatore.");
-        }
-        if (nome.trim().length() > LUNGHEZZA_MASSIMA_NOME) {
-            throw new MossaNonValidaException(
-                    "Il nome può avere al massimo " + LUNGHEZZA_MASSIMA_NOME + " caratteri.");
-        }
         if (jpaGiocatoreRepository.findBySegnalino(segnalino) != null) {
             throw new MossaNonValidaException(SEGNALINO_GIA_SCELTO);
         }

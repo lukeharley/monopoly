@@ -6,7 +6,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TabelloneTest {
 
 	private Tabellone tabellone;
@@ -16,7 +15,6 @@ public class TabelloneTest {
 		tabellone = new Tabellone();
 	}
 
-	@Order(1)
 	@Test
 	void test_inizializzazione_monopoly() {
 
@@ -24,7 +22,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(2)
 	@Test
 	void test_caselle() {
 
@@ -52,7 +49,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(3)
 	@Test
 	void test_segnalini() {
 
@@ -60,7 +56,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(4)
 	@Test
 	void test_contratti() {
 
@@ -83,7 +78,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(41)
 	@Test
 	void test_gruppi_e_posizioni() {
 
@@ -99,7 +93,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(42)
 	@Test
 	void test_tabella_rendite() {
 
@@ -110,7 +103,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(5)
 	@Test
 	void test_imprevisti() {
 
@@ -121,7 +113,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(6)
 	@Test
 	void test_probabilita() {
 
@@ -131,7 +122,6 @@ public class TabelloneTest {
 
 	}
 
-	@Order(7)
 	@Test
 	void test_casette() {
 
@@ -139,7 +129,6 @@ public class TabelloneTest {
 		assertEquals(32, new Banca().getCasetteDisponibili());
 	}
 
-	@Order(8)
 	@Test
 	void test_alberghi() {
 
@@ -147,7 +136,6 @@ public class TabelloneTest {
 		assertEquals(12, new Banca().getAlberghiDisponibili());
 	}
 
-	@Order(9)
 	@Test
 	void test_dadi() {
 

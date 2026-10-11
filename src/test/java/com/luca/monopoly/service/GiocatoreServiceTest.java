@@ -27,12 +27,4 @@ class GiocatoreServiceTest {
 				() -> giocatoreService.aggiungiGiocatore("Luca", Segnalini.CANE));
 		assertEquals("Il segnalino selezionato è già stato scelto.", eccezione.getMessage());
 	}
-
-	@Test
-	void nome_vuoto_o_troppo_lungo_rifiutato() {
-		assertThrows(MossaNonValidaException.class, () -> giocatoreService.aggiungiGiocatore("  ", Segnalini.CANE));
-		assertThrows(MossaNonValidaException.class,
-				() -> giocatoreService.aggiungiGiocatore("X".repeat(31), Segnalini.CANE));
-		verify(repository, never()).saveAndFlush(any());
-	}
 }
