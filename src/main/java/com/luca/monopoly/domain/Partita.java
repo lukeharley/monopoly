@@ -355,7 +355,8 @@ public class Partita {
 
 	private void spostaSenzaPassareDalVia(Giocatore giocatore, int nuovaPosizione) {
 		giocatore.setPosizione(nuovaPosizione);
-		registra(giocatore.getNome() + " arriva su " + tabellone.getCasella(nuovaPosizione).getTesto() + ".");
+		String casella = tabellone.getCasella(nuovaPosizione).getTesto();
+		registra(giocatore.getNome() + " arriva su " + casella + (casella.endsWith("!") ? "" : "."));
 		risolviCasella(giocatore);
 	}
 

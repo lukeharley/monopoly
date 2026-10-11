@@ -218,6 +218,11 @@ h1 {
     text-shadow: 0 0 2px #000;
 }
 
+.proprieta-giocatore span.chiara {
+    color: #212529;
+    text-shadow: none;
+}
+
 @media (max-width: 600px) {
     .dadi {
         font-size: 28px;

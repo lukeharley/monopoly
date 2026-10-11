@@ -1,101 +1,190 @@
-# monopoly
+# Monopoly
 
-## Come avviare il gioco
+[![CI](https://github.com/lukeharley/monopoly/actions/workflows/ci.yml/badge.svg)](https://github.com/lukeharley/monopoly/actions/workflows/ci.yml)
 
-- Senza MySQL, con database H2 in memoria: `mvn spring-boot:run -Dspring-boot.run.profiles=dev`
-- Con MySQL: impostare le variabili d'ambiente `DB_PASSWORD` (ed eventualmente `DB_URL`, `DB_USERNAME`)
-  e lanciare `mvn spring-boot:run`. In VS Code si possono mettere nel file `.env` (escluso da git).
+Il Monopoly nella **versione italiana in euro**, giocabile nel browser da 2 a 8 giocatori.
+Applicazione web **Java 17 + Spring Boot 3**: le regole stanno sul server, l'interfaccia è una pagina
+HTML/JavaScript che mostra il tabellone e invia le mosse.
 
-Poi aprire http://localhost:8080, registrare da 2 a 8 giocatori (nome + segnalino) e premere **Avvia partita**.
-Si può giocare sullo stesso computer oppure da più dispositivi aperti sulla stessa partita: ogni schermata
-si aggiorna da sola con le mosse degli altri.
+![Una partita in corso: tabellone, giocatori, registro degli eventi e dettaglio di una proprietà](docs/partita.png)
 
-Test: `mvn verify` (eseguiti anche dalla CI di GitHub Actions a ogni push).
+## Caratteristiche
+
+- 🎲 **Partita completa**: turni, dadi con doppi, acquisti, aste, affitti, case e alberghi, ipoteche,
+  Imprevisti e Probabilità, prigione, debiti, bancarotta e vittoria.
+- 🖥️ **Tabellone interattivo**: segnalini, edifici, colore del proprietario, registro degli eventi;
+  cliccando una casella se ne vedono i dettagli e si gestiscono le proprie proprietà.
+- 🌐 **Multi-dispositivo**: più persone possono aprire la stessa partita e ogni schermata si aggiorna da sola.
+  Una mossa decisa su uno stato ormai superato viene rifiutata invece di essere applicata.
+- ✅ **Testato**: test delle regole e test d'integrazione dell'API, eseguiti dalla CI a ogni push.
+
+## Avvio rapido
+
+Serve **Java 17** o superiore con **Maven**.
+
+```bash
+# senza installare nulla: database H2 in memoria
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Poi apri http://localhost:8080.
+
+<details>
+<summary>Con MySQL</summary>
+
+Le credenziali si leggono dalle variabili d'ambiente (in VS Code si possono mettere nel file `.env`,
+già escluso da git e letto dalla configurazione di avvio):
+
+| Variabile | Predefinito |
+|---|---|
+| `DB_URL` | `jdbc:mysql://localhost:3306/monopoly?createDatabaseIfNotExist=true` |
+| `DB_USERNAME` | `luke` |
+| `DB_PASSWORD` | *(vuota)* |
+
+```bash
+DB_PASSWORD=la-tua-password mvn spring-boot:run
+```
+</details>
+
+<details>
+<summary>Online con GitHub Codespaces</summary>
+
+1. **Code → Codespaces → Create codespace**.
+2. Nel terminale: `mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
+3. Apri la porta **8080** dalla scheda *Ports*. Per far giocare altre persone imposta la porta su **Public**
+   e condividi il link.
+</details>
+
+## Come si gioca
+
+1. Registra da 2 a 8 giocatori, ognuno con un nome e un segnalino diverso, poi premi **Avvia partita**.
+2. Al proprio turno ogni giocatore:
+   - **lancia i dadi**; con un doppio rilancia, al terzo doppio consecutivo va in prigione;
+   - se arriva su una proprietà libera la **compra** oppure la manda **all'asta**;
+   - paga affitti e tasse, oppure pesca una carta;
+   - in qualsiasi momento del turno può **costruire**, **vendere edifici**, **ipotecare** o **riscattare**
+     le proprie proprietà, cliccandole sul tabellone o nel proprio pannello;
+   - preme **Fine turno**.
+3. Vince l'ultimo giocatore non in bancarotta. **Termina partita** chiude prima la partita e proclama vincitore
+   chi ha il patrimonio più alto.
+
+| Lobby | Fine partita |
+|---|---|
+| ![Registrazione dei giocatori](docs/lobby.png) | ![Vittoria dopo le bancarotte degli altri giocatori](docs/fine-partita.png) |
 
 ## Regole implementate
 
-- Lancio di 2 dadi; con un doppio si rilancia, al terzo doppio consecutivo si va in prigione.
-- Passaggio dal Via: +200€.
-- Acquisto facoltativo di terreni, stazioni e società; se il giocatore rinuncia, la proprietà va **all'asta**
-  tra tutti i giocatori (senza offerte resta alla banca).
-- Affitti versati al proprietario: terreno (doppio con il monopolio del colore), case e alberghi secondo i Contratti,
-  stazioni 25/50/100/200€, società 4 o 10 volte il risultato dei dadi. Le proprietà ipotecate non rendono.
-- Costruzione uniforme di case e alberghi (solo con il monopolio e nessun terreno del gruppo ipotecato),
-  vendita alla banca a metà prezzo, scorte limitate di 32 case e 12 alberghi.
-- Ipoteca (metà del prezzo) e riscatto (ipoteca + 10%).
-- 16 Imprevisti e 16 Probabilità mescolati, incluse "Uscite gratis di prigione" e riparazioni per case/alberghi.
-- Prigione: multa di 125€, carta "Uscite gratis", oppure doppio; al terzo tentativo fallito si paga e si esce.
-- Tasse: Patrimoniale 200€, di Lusso 100€.
-- Debiti: se i contanti non bastano, il giocatore sceglie quali edifici vendere e quali proprietà ipotecare,
-  poi paga; può anche dichiarare bancarotta. Se nemmeno vendendo tutto può pagare, va subito in bancarotta
-  (edifici alla banca, il resto al creditore o alla banca).
-- Vince l'ultimo giocatore rimasto, oppure (pulsante **Termina partita**) chi ha il patrimonio più alto.
+| Regola | Come funziona |
+|---|---|
+| Partenza | 1500 € a testa; passando dal Via si ritirano 200 € |
+| Dadi | Due dadi; con un doppio si rilancia, al terzo doppio consecutivo si va in prigione |
+| Acquisto e asta | L'acquisto è facoltativo; se il giocatore rinuncia, la proprietà va all'asta tra tutti i giocatori (senza offerte resta alla banca) |
+| Affitti dei terreni | Rendite ufficiali dei contratti (terreno, 1-4 case, albergo); terreno senza case a rendita doppia con il monopolio del colore |
+| Stazioni e società | Stazioni 25/50/100/200 € secondo quante se ne possiedono; società 4 volte i dadi, 10 volte con entrambe |
+| Case e alberghi | Solo con il monopolio del colore e senza terreni ipotecati nel gruppo; costruzione e vendita uniformi; scorte di 32 case e 12 alberghi; vendita alla banca a metà prezzo |
+| Ipoteche | Si incassa metà del prezzo; riscatto = ipoteca + 10%; una proprietà ipotecata non rende |
+| Carte | 16 Imprevisti e 16 Probabilità mescolati, tra cui "Uscite gratis di prigione" e le riparazioni per case e alberghi |
+| Tasse | Patrimoniale 200 €, di Lusso 100 € |
+| Prigione | Si esce pagando 125 €, usando la carta o facendo un doppio; al terzo tentativo fallito si paga la multa e si esce |
+| Debiti | Se i contanti non bastano, il giocatore sceglie quali edifici vendere e cosa ipotecare, poi paga oppure dichiara bancarotta |
+| Bancarotta | Automatica se nemmeno vendendo tutto si raggiunge la somma; gli edifici tornano alla banca, denaro e proprietà al creditore (o alla banca) |
 
-Non implementati: scambi di proprietà tra giocatori.
+Non ancora implementati: scambi di proprietà tra giocatori, limite di tempo della partita.
 
 ## Architettura
 
-| Livello | Classi | Responsabilità |
+```
+src/main/java/com/luca/monopoly
+├── HomeController, AjaxHomeController   web: lobby (form) e API JSON delle mosse
+├── GestoreErroriApi                     web: eccezioni → codici HTTP
+├── StatoPartitaView                     web: fotografia JSON della partita
+├── service/                             partita condivisa, lock, versione, persistenza
+├── repository/                          giocatori registrati (JPA)
+└── domain/                              regole del gioco, indipendenti da Spring
+    ├── Partita                          turni e fasi
+    ├── Asta, Debito                     asta in corso, debito da saldare
+    ├── CalcolatoreAffitto               affitti
+    ├── GestoreProprieta                 case, alberghi, ipoteche
+    └── Tabellone, Casella, Contratto, Mazzo, Carta, Banca, Dado, ...
+```
+
+Il turno è una **macchina a stati** (`FasePartita`); ogni mossa è ammessa solo nella fase giusta:
+
+```mermaid
+stateDiagram-v2
+    [*] --> LANCIO_DADI
+    LANCIO_DADI --> DECISIONE_ACQUISTO: proprietà libera
+    LANCIO_DADI --> SALDO_DEBITO: contanti insufficienti
+    LANCIO_DADI --> FINE_TURNO
+    LANCIO_DADI --> LANCIO_DADI: doppio
+    DECISIONE_ACQUISTO --> FINE_TURNO: compra
+    DECISIONE_ACQUISTO --> ASTA: rinuncia
+    ASTA --> FINE_TURNO: asta conclusa
+    SALDO_DEBITO --> FINE_TURNO: debito pagato
+    SALDO_DEBITO --> LANCIO_DADI: bancarotta, tocca al prossimo
+    FINE_TURNO --> LANCIO_DADI: prossimo giocatore
+    LANCIO_DADI --> TERMINATA: un solo giocatore rimasto
+    SALDO_DEBITO --> TERMINATA: un solo giocatore rimasto
+    TERMINATA --> [*]
+```
+
+Dopo un acquisto, un'asta o un debito pagato si torna a `LANCIO_DADI` se era uscito un doppio.
+
+### API
+
+La pagina chiama questi endpoint; ogni mossa risponde con il nuovo stato completo in JSON.
+
+| Metodo | Percorso | Azione |
 |---|---|---|
-| Web | `HomeController`, `AjaxHomeController`, `GestoreErroriApi` | Lobby (form + redirect), API JSON delle mosse, errori → codici HTTP |
-| Servizi | `MonopolyService`, `GiocatoreService` | Partita condivisa sotto lock, versione per la concorrenza ottimistica, persistenza giocatori |
-| Dominio | `Partita`, `Asta`, `CalcolatoreAffitto`, `GestoreProprieta`, `Tabellone`, `Banca`, `Mazzo` | Regole del gioco, indipendenti da Spring |
+| `GET` | `/stato?versione=N` | Stato della partita (`204` se la versione `N` è ancora quella attuale) |
+| `POST` | `/lanciaDadi`, `/fineTurno` | Lancio dei dadi, passaggio del turno |
+| `POST` | `/compraProprieta`, `/rifiutaAcquisto` | Acquisto oppure avvio dell'asta |
+| `POST` | `/offerta?importo=N`, `/ritiratiDallAsta` | Asta |
+| `POST` | `/pagaDebito`, `/dichiaraBancarotta` | Saldo del debito |
+| `POST` | `/pagaUscitaDiPrigione`, `/usaCartaUscitaDiPrigione` | Uscita di prigione |
+| `POST` | `/costruisciCasetta/{pos}`, `/vendiCasetta/{pos}` | Edifici sulla casella `pos` (0-39) |
+| `POST` | `/ipoteca/{pos}`, `/riscattaIpoteca/{pos}` | Ipoteche |
+| `POST` | `/terminaPartita` | Chiusura anticipata della partita |
 
-Codici di risposta dell'API: `200` mossa eseguita (corpo = nuovo stato), `204` stato invariato (polling),
-`400` parametri non validi, `404` nessuna partita, `409` mossa fatta su uno stato superato,
-`422` mossa non ammessa dalle regole.
+Ogni `POST` accetta il parametro facoltativo `versione`. Codici di risposta:
 
-## Note di progetto
+| Codice | Significato |
+|---|---|
+| `200` | Mossa eseguita |
+| `400` | Parametri non validi |
+| `404` | Nessuna partita in corso |
+| `409` | La partita è cambiata nel frattempo: aggiornare lo stato e riprovare |
+| `422` | Mossa non ammessa dalle regole (il messaggio è nel campo `errore`) |
 
-Fonti
-Regolamento:
-https://www.giochi-da-tavolo.it/monpoli-istruzioni-regole/
+La lobby usa form classici: `POST /` aggiunge un giocatore, `POST /avviaPartita` avvia la partita,
+`POST /resettaPartita` cancella partita e giocatori.
 
-Tabellone e costi delle singole proprietà:
-https://it.wikipedia.org/wiki/Monopoly#:~:text=Giochi%20(in%20euro)-,Posteggio%20gratuito,-Via%20Marco%20Polo
+## Test
 
-Imprevisti e Probabilità: https://answerprime.com/monopoli-elenco-imprevisti-probabilita10pt-2/
+```bash
+mvn verify
+```
 
-Contratti (Campione): https://it.scribd.com/document/327938771/Contratti-Monopoli
-https://www.giochi-da-tavolo.it/monpoli-istruzioni-regole/#:~:text=PAGARE%20RENDITE%20E%20AFFITTI
-ricerca dei restanti contratti su Google Immagini e conversione dei valori da lire in euro (diviso 40)
+- `PartitaTest`: regole del gioco con dadi e mazzi deterministici (doppi, prigione, affitti, aste, debiti, bancarotta...).
+- `MonopolyTest`: contenuto della scatola (caselle, contratti, carte, case, alberghi, dadi).
+- `ApiPartitaIntegrationTest`: l'API HTTP sul database H2, inclusi i conflitti di versione.
 
-Sviluppo del gioco Monopoly
-Scopo del gioco:
+La CI di GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) esegue gli stessi test a ogni push.
 
-1. Diventare il giocatore più ricco dopo un certo tempo: dal momento in cui comincia la partita, cominciare a calcolare il passare del tempo. Nel momento in cui sono state raggiunte le 3 ore di gioco, il gioco si interrompe e il giocatore con più soldi VINCE. [POSTICIPATO]
-2. Quando un giocatore deve pagare più soldi di quelli posseduti va in bancarotta ed esce dal gioco. Quando rimane un solo giocatore, prima che siano trascorse le 3 ore, il giocatore rimasto VINCE. [POSTICIPATO]
-3. ~~Rappresentare il contenuto della scatola del Monopoly: 1 tabellone, 8 segnalini, 28 contratti, 16 carte "Imprevisti", 16 carte "Probabilità", 32 case, 12 alberghi, 2 dadi.~~
-   [FATTO]
-4. ~~Conto di partenza di ogni giocatore (= Patrimonio): 2 _ 500€ + 4 _ 100€ + 50€ + 20€ + 2 _ 10€ + 5€ + 5 _ 1€. Per un totale di 1500€.~~ [FATTO]
-5. ~~Ad ogni turno il giocatore lancia i dadi e ottiene un valore che fa muovere i segnalini dei giocatori (shift = valore ottenuto come risultato del lancio dei dadi).~~ [FATTO]
-   ~~Terminate/oltrepassate le 40 posizioni del tabellone, si ottengono i 500€ del Via! e il giro ricomincia da 0)~~ [FATTO]
-   (Se si ottengono 2 numeri uguali per le 2 facce, il giocatore ripete il turno. [POSTICIPATO]
-   Dopo 3 volte che ciò accade, il giocatore finisce in prigione senza passare dal Via! [= senza ritirare i 500€, non vale il ricalcolo delle posizioni delle caselle].) [POSTICIPATO]
-6. In base alla casella su cui si arriva, si potranno effettuare le seguenti azioni:
-   a) ~~Acquistare la proprietà/il terreno (se ancora disponibili)~~ [FATTO] e, se si ottengono tutti i terreni di uno stesso colore, posizionare le case e quindi gli alberghi (se possibile): il costo (da saldare alla banca) è stabilito nelle carte dei Contratti.
-   [Se si completa il numero di terreni dello stesso colore (= si ha un Monopolio) la rendita del solo terreno raddoppia e si sblocca la possibilità di posizionare case e poi alberghi]
-   b) ~~Pagare l'affitto/la rendita (se la proprietà è posseduta da un altro giocatore): il prezzo (da pagare alla banca) è stabilito nelle carte dei Contratti e dipende dal numero di case e alberghi~~ [FATTO]
-   c) ~~Se la casella è di tipo imprevisto o probabilità (String.equals()). Pescare una carta "Imprevisti" o "Probabilità" e registrare l'effetto in base alle variabili cotenute nel testo della rispettiva carta.~~
-   d) ~~Se la casella è una stazione o società elettrica pagare la tassa: il costo è stabilito nelle carte dei Contratti.~~
-   e) ~~Andare in prigione~~
-   f) ~~Se la casella è Posteggio gratuito" non accade niente~~
-   g) ~~Se la casella è il "Via!" si ritira un premio in denaro: es. 500€~~ [FATTO]
-   h) Se la casella è "In prigione!" il giocatore finisce in prigione.
-7. ACQUISTARE PROPRIETA’, CASE E ALBERGHI
-   Se si riescono ad ottenere tutti i terreni dello stesso colore, è possibile comprare case al prezzo indicato sul Contratto. Va ricordato che si è obbligati a costruire in maniera proporzionata: non si potrà costruire una seconda casa se prima non si è costruito una casa su ognuno dei terreni di quel gruppo.
-8. Potete comprare tanti edifici quanti volete nello stesso turno, a patto che siate in grado di pagarli, ma non potete costruire su un terreno se uno qualsiasi degli altri terreni dello stesso gruppo è ipotecato.
-9. Terreni all'asta
-   VENDITA DELLE PROPRIETA’
-   È possibile vendere Servizi, Stazioni e Terreni a un qualunque altro giocatore mettendoli all’asta in qualsiasi momento. E’ importante ricordare che i terreni si possono vendere solo “nudi”, senza edifici. Se sono presenti case o alberghi andranno venduti alla metà del prezzo d’acquisto alla banca, prima di procedere con la vendita della nuda proprietà del terreno.
-10. Ipoteche sulle proprietà
-    È possibile ipotecare una proprietà incassando dalla banca quello che sul Contratto è definito “Valore Ipotecario”. Servizi, Stazioni e Terreni ipotecati rimangono di proprietà, e nessun altro giocatore potrà cancellare le ipoteche per impossessarsene. Le proprietà ipotecate vanno girate mostrando il retro del Contratto. Questa proprietà ipotecata non rende più nessun affitto. Tuttavia se si possiedono tutti i terreni di uno stesso colore, (Monopolio) è possibile incassare il doppio dell’affitto dovuto per la sosta su un terreno non ipotecato, anche se gli altri due terreni del medesimo colore sono ipotecati.
-    Per annullare l’ipoteca è sufficiente pagare il vaore originario dell’ipoteca + il 10% di interessi alla banca. Il contratto si rigirerà a fascia in su e sarà possibile riguadagnare rendite da tale proprietà.
-11. Per uscire di prigione
-    Chi si trova in PRIGIONE può uscirne in uno dei seguenti modi:
-12. mediante il pagamento di € 125 al suo prossimo turno, prima di lanciare i dadi
-13. ottenendo un punteggio doppio con i dadi senza dover pagare nulla. In questo caso deve muovere il segnalino di un numero di caselle pari al punteggio ottenuto
-14. utilizzando uno dei cartoncini sui quali è scritto USCITE GRATIS DI PRIGIONE
-    Ad ogni turno trascorso in Prigione, il giocatore deve comunque lanciare i dadi. Se esce un “doppio” esce, altrimenti no. Dopo 3 turni il giocatore è costretto a pagare € 125 di multa e uscire, utilizzando per il movimento l’ultimo punteggio ottenuto.
+## Limiti noti
 
-# monopoly
+- Il server gestisce **una sola partita** alla volta, condivisa da chiunque apra il sito.
+- Non ci sono account: chi apre la pagina può muovere per il giocatore di turno (pensato per giocare insieme).
+- Con il profilo `dev` i dati sono in memoria e si perdono al riavvio.
+
+## Fonti
+
+- Regolamento: https://www.giochi-da-tavolo.it/monpoli-istruzioni-regole/
+- Tabellone e prezzi delle proprietà (edizione in euro): https://it.wikipedia.org/wiki/Monopoly
+- Imprevisti e Probabilità: https://answerprime.com/monopoli-elenco-imprevisti-probabilita10pt-2/
+- Contratti: https://it.scribd.com/document/327938771/Contratti-Monopoli
+
+---
+
+Il repository contiene anche **CustomScraper**, un modulo separato e indipendente dal gioco
+(navigazione di siti, estrazione e matching di prodotti): vedi [CUSTOM_SCRAPER.md](CUSTOM_SCRAPER.md).

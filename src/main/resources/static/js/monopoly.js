@@ -11,6 +11,9 @@ var COLORI_TERRENI = {
 
 var COLORI_GIOCATORI = ["#1565c0", "#c62828", "#2e7d32", "#f9a825", "#6a1b9a", "#00838f", "#ef6c00", "#4e342e"];
 
+/* Colori su cui il testo bianco non si legge */
+var COLORI_CHIARI = ["giallo", "azzurro"];
+
 var FACCE_DADO = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
 var INTERVALLO_AGGIORNAMENTO_MS = 1500;
@@ -410,6 +413,9 @@ function disegnaGiocatori() {
                 var etichetta = document.createElement("span");
                 etichetta.textContent = casella.testo + (casella.ipotecata ? " (ipotecata)" : "");
                 etichetta.style.background = casella.colore ? COLORI_TERRENI[casella.colore] : "#555";
+                if (COLORI_CHIARI.indexOf(casella.colore) >= 0) {
+                    etichetta.classList.add("chiara");
+                }
                 etichetta.addEventListener("click", function () {
                     selezionaCasella(casella.posizione);
                 });
@@ -479,8 +485,12 @@ function disegnaDettaglioCasella() {
             aggiungiPulsante(azioni, "Riscatta ipoteca (" + casella.costoRiscatto + "€)", "btn-warning",
                 function () { invia("/riscattaIpoteca/" + casella.posizione); });
         } else if (!casella.ipotecata) {
+            // si ipoteca solo dopo aver venduto gli edifici dell'intero gruppo
+            var gruppoConEdifici = casella.colore !== null && stato.caselle.some(function (altra) {
+                return altra.colore === casella.colore && altra.casette > 0;
+            });
             aggiungiPulsante(azioni, "Ipoteca (+" + casella.valoreIpotecario + "€)", "btn-outline-warning",
-                function () { invia("/ipoteca/" + casella.posizione); });
+                function () { invia("/ipoteca/" + casella.posizione); }, gruppoConEdifici);
         }
     }
 }
