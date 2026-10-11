@@ -21,8 +21,8 @@ public class PartitaTest {
 
 	@BeforeEach
 	void setup() {
-		luca = new Giocatore("Luca", Segnalini.CANE);
-		mario = new Giocatore("Mario", Segnalini.DINOSAURO);
+		luca = new Giocatore("Luca", Segnalino.CANE);
+		mario = new Giocatore("Mario", Segnalino.DINOSAURO);
 		partita = new Partita(List.of(luca, mario), new Random(0), false);
 		tabellone = partita.getTabellone();
 	}
@@ -338,7 +338,7 @@ public class PartitaTest {
 
 	@Test
 	void bancarotta_con_tre_giocatori_passa_il_turno() {
-		Giocatore anna = new Giocatore("Anna", Segnalini.GATTO);
+		Giocatore anna = new Giocatore("Anna", Segnalino.GATTO);
 		partita = new Partita(List.of(luca, mario, anna), new Random(0), false);
 
 		conContanti(luca, 50);

@@ -14,7 +14,7 @@ import java.util.List;
 public class Giocatore {
 
     private final String nome;
-    private final Segnalini segnalino;
+    private final Segnalino segnalino;
     private final List<Carta> carteUscitaDiPrigione = new ArrayList<>();
 
     private int portafoglio = Partita.PORTAFOGLIO_INIZIALE;
@@ -23,7 +23,7 @@ public class Giocatore {
     private int turniInPrigione;
     private boolean inBancarotta;
 
-    public Giocatore(String nome, Segnalini segnalino) {
+    public Giocatore(String nome, Segnalino segnalino) {
         this.nome = nome;
         this.segnalino = segnalino;
     }
@@ -36,7 +36,7 @@ public class Giocatore {
         return nome;
     }
 
-    public Segnalini getSegnalino() {
+    public Segnalino getSegnalino() {
         return segnalino;
     }
 

@@ -5,9 +5,9 @@ import com.luca.monopoly.domain.Giocatore;
 import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.domain.PartitaAssenteException;
-import com.luca.monopoly.domain.Segnalini;
+import com.luca.monopoly.domain.Segnalino;
 import com.luca.monopoly.domain.StatoCambiatoException;
-import com.luca.monopoly.repository.JpaGiocatore;
+import com.luca.monopoly.persistence.GiocatoreEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ public class MonopolyService {
         return partita != null;
     }
 
-    public synchronized void aggiungiGiocatore(String nome, Segnalini segnalino) {
+    public synchronized void aggiungiGiocatore(String nome, Segnalino segnalino) {
         if (partita != null) {
             throw new MossaNonValidaException(
                     "La partita è già iniziata: resettala per aggiungere nuovi giocatori.");
@@ -53,7 +53,7 @@ public class MonopolyService {
         giocatoreService.aggiungiGiocatore(nome, segnalino);
     }
 
-    public synchronized void rimuoviGiocatore(Segnalini segnalino) {
+    public synchronized void rimuoviGiocatore(Segnalino segnalino) {
         if (partita != null) {
             throw new MossaNonValidaException(
                     "La partita è già iniziata: resettala per togliere giocatori dal tavolo.");
@@ -67,8 +67,8 @@ public class MonopolyService {
         }
 
         List<Giocatore> giocatori = new ArrayList<>();
-        for (JpaGiocatore jpaGiocatore : giocatoreService.getGiocatori()) {
-            giocatori.add(new Giocatore(jpaGiocatore.getNome(), jpaGiocatore.getSegnalino()));
+        for (GiocatoreEntity registrato : giocatoreService.getGiocatori()) {
+            giocatori.add(new Giocatore(registrato.getNome(), registrato.getSegnalino()));
         }
 
         partita = new Partita(giocatori);

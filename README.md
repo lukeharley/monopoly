@@ -128,17 +128,23 @@ Non ancora implementati: scambi di proprietà tra giocatori, limite di tempo del
 
 ```
 src/main/java/com/luca/monopoly
-├── HomeController, AjaxHomeController   web: lobby (form) e API JSON delle mosse
-├── GestoreErroriApi                     web: eccezioni → codici HTTP
-├── StatoPartitaView                     web: fotografia JSON della partita
-├── service/                             partita condivisa, lock, versione, persistenza
-├── repository/                          giocatori registrati (JPA)
+├── Application                          avvio di Spring Boot
+├── web/                                 livello HTTP
+│   ├── HomeController                   lobby: form e redirect
+│   ├── PartitaApiController             API JSON delle mosse
+│   ├── GestoreErroriApi                 eccezioni → codici HTTP
+│   ├── ProtezioneCrossSiteFilter        protezione CSRF (Fetch Metadata / Origin)
+│   ├── HomeForm                         form della lobby con Bean Validation
+│   └── dto/                             StatoPartitaView (JSON della partita), viste della lobby
+├── service/                             partita condivisa, lock, versione; lobby
+├── persistence/                         GiocatoreEntity e GiocatoreRepository (JPA, schema Flyway)
 └── domain/                              regole del gioco, indipendenti da Spring
     ├── Partita                          turni e fasi
     ├── Asta, Debito                     asta in corso, debito da saldare
     ├── CalcolatoreAffitto               affitti
     ├── GestoreProprieta                 case, alberghi, ipoteche
-    └── Tabellone, Casella, Contratto, Mazzo, Carta, Banca, Dado, ...
+    ├── RegistroEventi                   ultimi eventi della partita
+    └── Tabellone, Casella, Contratto, Giocatore, Segnalino, Mazzo, Carta, Banca, Dado, ...
 ```
 
 Il turno è una **macchina a stati** (`FasePartita`); ogni mossa è ammessa solo nella fase giusta:

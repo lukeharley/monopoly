@@ -1,11 +1,13 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web;
 
 import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.Partita;
-import com.luca.monopoly.domain.Segnalini;
-import com.luca.monopoly.repository.JpaGiocatore;
+import com.luca.monopoly.domain.Segnalino;
+import com.luca.monopoly.persistence.GiocatoreEntity;
 import com.luca.monopoly.service.GiocatoreService;
 import com.luca.monopoly.service.MonopolyService;
+import com.luca.monopoly.web.dto.GiocatoreView;
+import com.luca.monopoly.web.dto.SegnalinoView;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -34,18 +36,18 @@ public class HomeController {
     @GetMapping("/")
     public String getHome(Model model) {
 
-        List<JpaGiocatore> jpaGiocatori = giocatoreService.getGiocatori();
+        List<GiocatoreEntity> giocatoriRegistrati = giocatoreService.getGiocatori();
 
         List<GiocatoreView> giocatori = new ArrayList<>();
-        List<Segnalini> segnaliniScelti = new ArrayList<>();
-        for (JpaGiocatore jpaGiocatore : jpaGiocatori) {
+        List<Segnalino> segnaliniScelti = new ArrayList<>();
+        for (GiocatoreEntity registrato : giocatoriRegistrati) {
             GiocatoreView giocatoreView = new GiocatoreView();
-            giocatoreView.setNome(jpaGiocatore.getNome());
-            giocatoreView.setSegnalino(jpaGiocatore.getSegnalino().getNome());
-            giocatoreView.setValoreSegnalino(jpaGiocatore.getSegnalino().name());
+            giocatoreView.setNome(registrato.getNome());
+            giocatoreView.setSegnalino(registrato.getSegnalino().getNome());
+            giocatoreView.setValoreSegnalino(registrato.getSegnalino().name());
 
             giocatori.add(giocatoreView);
-            segnaliniScelti.add(jpaGiocatore.getSegnalino());
+            segnaliniScelti.add(registrato.getSegnalino());
         }
         model.addAttribute("giocatori", giocatori);
 
@@ -57,7 +59,7 @@ public class HomeController {
 
         List<SegnalinoView> segnalini = new ArrayList<>();
         String segnalinoProposto = null;
-        for (Segnalini segnalino : Segnalini.values()) {
+        for (Segnalino segnalino : Segnalino.values()) {
             boolean preso = segnaliniScelti.contains(segnalino);
             segnalini.add(new SegnalinoView(segnalino.name(), segnalino.getNome(), preso));
             if (!preso && segnalinoProposto == null) {
@@ -110,7 +112,7 @@ public class HomeController {
     }
 
     @PostMapping("/rimuoviGiocatore")
-    public String rimuoviGiocatore(@RequestParam Segnalini segnalino, RedirectAttributes redirectAttributes) {
+    public String rimuoviGiocatore(@RequestParam Segnalino segnalino, RedirectAttributes redirectAttributes) {
         try {
             monopolyService.rimuoviGiocatore(segnalino);
         } catch (MossaNonValidaException eccezione) {

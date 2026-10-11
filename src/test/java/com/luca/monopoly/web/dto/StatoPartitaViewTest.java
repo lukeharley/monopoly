@@ -1,8 +1,8 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web.dto;
 
 import com.luca.monopoly.domain.Giocatore;
 import com.luca.monopoly.domain.Partita;
-import com.luca.monopoly.domain.Segnalini;
+import com.luca.monopoly.domain.Segnalino;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class StatoPartitaViewTest {
 
 	private final Partita partita = new Partita(
-			List.of(new Giocatore("Luca", Segnalini.CANE), new Giocatore("Mario", Segnalini.DINOSAURO)));
+			List.of(new Giocatore("Luca", Segnalino.CANE), new Giocatore("Mario", Segnalino.DINOSAURO)));
 
 	@Test
 	void stato_iniziale() {

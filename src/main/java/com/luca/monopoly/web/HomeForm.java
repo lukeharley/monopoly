@@ -1,6 +1,6 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web;
 
-import com.luca.monopoly.domain.Segnalini;
+import com.luca.monopoly.domain.Segnalino;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,7 +17,7 @@ public class HomeForm {
 
     /** Arriva dal form come nome della costante (es. "CANE"), non come numero. */
     @NotNull(message = "Scegliere un segnalino.")
-    private Segnalini segnalino;
+    private Segnalino segnalino;
 
     public String getNome() {
         return nome;
@@ -27,11 +27,11 @@ public class HomeForm {
         this.nome = nome;
     }
 
-    public Segnalini getSegnalino() {
+    public Segnalino getSegnalino() {
         return segnalino;
     }
 
-    public void setSegnalino(Segnalini segnalino) {
+    public void setSegnalino(Segnalino segnalino) {
         this.segnalino = segnalino;
     }
 

@@ -1,4 +1,4 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

@@ -1,6 +1,6 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web;
 
-import com.luca.monopoly.domain.Segnalini;
+import com.luca.monopoly.domain.Segnalino;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -15,7 +15,7 @@ class HomeFormTest {
 
 	private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
-	private Set<String> errori(String nome, Segnalini segnalino) {
+	private Set<String> errori(String nome, Segnalino segnalino) {
 		HomeForm form = new HomeForm();
 		form.setNome(nome);
 		form.setSegnalino(segnalino);
@@ -24,15 +24,15 @@ class HomeFormTest {
 
 	@Test
 	void form_valido() {
-		assertTrue(errori("Luca", Segnalini.CANE).isEmpty());
-		assertTrue(errori("X".repeat(HomeForm.LUNGHEZZA_MASSIMA_NOME), Segnalini.CANE).isEmpty());
+		assertTrue(errori("Luca", Segnalino.CANE).isEmpty());
+		assertTrue(errori("X".repeat(HomeForm.LUNGHEZZA_MASSIMA_NOME), Segnalino.CANE).isEmpty());
 	}
 
 	@Test
 	void nome_obbligatorio_e_non_troppo_lungo() {
-		assertEquals(Set.of("Inserire il nome del giocatore."), errori("   ", Segnalini.CANE));
-		assertEquals(Set.of("Inserire il nome del giocatore."), errori(null, Segnalini.CANE));
-		assertEquals(Set.of("Il nome può avere al massimo 30 caratteri."), errori("X".repeat(31), Segnalini.CANE));
+		assertEquals(Set.of("Inserire il nome del giocatore."), errori("   ", Segnalino.CANE));
+		assertEquals(Set.of("Inserire il nome del giocatore."), errori(null, Segnalino.CANE));
+		assertEquals(Set.of("Il nome può avere al massimo 30 caratteri."), errori("X".repeat(31), Segnalino.CANE));
 	}
 
 	@Test

@@ -1,4 +1,4 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web.dto;
 
 import com.luca.monopoly.domain.Asta;
 import com.luca.monopoly.domain.CalcolatoreAffitto;

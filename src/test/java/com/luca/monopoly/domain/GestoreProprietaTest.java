@@ -15,7 +15,7 @@ class GestoreProprietaTest {
 	private final Banca banca = new Banca();
 	private final List<String> eventi = new ArrayList<>();
 	private final GestoreProprieta gestore = new GestoreProprieta(tabellone, banca, eventi::add);
-	private final Giocatore luca = new Giocatore("Luca", Segnalini.CANE);
+	private final Giocatore luca = new Giocatore("Luca", Segnalino.CANE);
 	private Casella vicoloCorto;
 	private Casella vicoloStretto;
 

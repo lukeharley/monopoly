@@ -11,7 +11,7 @@ class CalcolatoreAffittoTest {
 
 	private final Tabellone tabellone = new Tabellone();
 	private final CalcolatoreAffitto calcolatore = new CalcolatoreAffitto(tabellone);
-	private final Giocatore mario = new Giocatore("Mario", Segnalini.DINOSAURO);
+	private final Giocatore mario = new Giocatore("Mario", Segnalino.DINOSAURO);
 
 	private int affitto(int posizione) {
 		return calcolatore.calcola(tabellone.getCasella(posizione), DADI);

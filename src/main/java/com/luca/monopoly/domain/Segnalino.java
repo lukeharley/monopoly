@@ -1,6 +1,6 @@
 package com.luca.monopoly.domain;
 
-public enum Segnalini {
+public enum Segnalino {
     CANE("Cane"),
     DINOSAURO("Dinosauro"),
     GATTO("Gatto"),
@@ -12,7 +12,7 @@ public enum Segnalini {
 
     private String nome;
 
-    private Segnalini(String nome) {
+    private Segnalino(String nome) {
         this.nome = nome;
     }
 
