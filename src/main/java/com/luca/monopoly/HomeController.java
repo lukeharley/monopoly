@@ -5,7 +5,6 @@ import com.luca.monopoly.domain.Segnalini;
 import com.luca.monopoly.repository.JpaGiocatore;
 import com.luca.monopoly.service.GiocatoreService;
 import com.luca.monopoly.service.MonopolyService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,11 +17,14 @@ import java.util.List;
 @Controller
 public class HomeController {
 
-    @Autowired
-    private GiocatoreService giocatoreService;
+    private final GiocatoreService giocatoreService;
 
-    @Autowired
-    private MonopolyService monopolyService;
+    private final MonopolyService monopolyService;
+
+    public HomeController(GiocatoreService giocatoreService, MonopolyService monopolyService) {
+        this.giocatoreService = giocatoreService;
+        this.monopolyService = monopolyService;
+    }
 
     @GetMapping("/")
     public String getHome(Model model) {
@@ -46,7 +48,7 @@ public class HomeController {
             model.addAttribute("form", new HomeForm());
         }
         model.addAttribute("dadi", monopolyService.getMonopoly().getDadi().size());
-        model.addAttribute("partitaInCorso", monopolyService.getPartita() != null);
+        model.addAttribute("partitaInCorso", monopolyService.isPartitaPresente());
 
         List<SelectOptionView> segnalini = new ArrayList<>();
 
@@ -66,7 +68,7 @@ public class HomeController {
     public String aggiungiGiocatore(HomeForm form, RedirectAttributes redirectAttributes) {
 
         try {
-            if (monopolyService.getPartita() != null) {
+            if (monopolyService.isPartitaPresente()) {
                 throw new MossaNonValidaException(
                         "La partita è già iniziata: resettala per aggiungere nuovi giocatori.");
             }
@@ -92,7 +94,7 @@ public class HomeController {
         return "redirect:/";
     }
 
-    @GetMapping("/resettaPartita")
+    @PostMapping("/resettaPartita")
     public String resettaPartita() {
         monopolyService.resettaPartita();
         return "redirect:/";

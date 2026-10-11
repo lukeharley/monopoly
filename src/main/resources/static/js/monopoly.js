@@ -11,10 +11,17 @@ var COLORI_TERRENI = {
 
 var COLORI_GIOCATORI = ["#1565c0", "#c62828", "#2e7d32", "#f9a825", "#6a1b9a", "#00838f", "#ef6c00", "#4e342e"];
 
+/* Colori su cui il testo bianco non si legge */
+var COLORI_CHIARI = ["giallo", "azzurro"];
+
 var FACCE_DADO = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+
+var INTERVALLO_AGGIORNAMENTO_MS = 1500;
+var FASI_DI_GESTIONE = ["LANCIO_DADI", "DECISIONE_ACQUISTO", "FINE_TURNO", "SALDO_DEBITO"];
 
 var stato = null;
 var casellaSelezionata = null;
+var richiestaInCorso = false;
 
 document.addEventListener("DOMContentLoaded", function () {
     if (!document.getElementById("partita")) {
@@ -25,26 +32,88 @@ document.addEventListener("DOMContentLoaded", function () {
             invia("/terminaPartita");
         }
     });
-    fetch("/stato")
-        .then(leggiRisposta)
-        .then(aggiornaInterfaccia)
-        .catch(mostraErrore);
+    caricaStato();
+    // chi guarda da un altro dispositivo vede le mosse degli altri giocatori
+    setInterval(aggiornaSeCambiato, INTERVALLO_AGGIORNAMENTO_MS);
 });
 
-function invia(url) {
-    fetch(url, { method: "POST" })
+function caricaStato() {
+    return fetch("/stato")
         .then(leggiRisposta)
         .then(aggiornaInterfaccia)
-        .catch(mostraErrore);
+        .catch(gestisciErrore);
+}
+
+function aggiornaSeCambiato() {
+    if (richiestaInCorso || !stato) {
+        return;
+    }
+    fetch("/stato?versione=" + stato.versione)
+        .then(function (risposta) {
+            return risposta.status === 204 ? null : leggiRisposta(risposta);
+        })
+        .then(function (dati) {
+            if (dati) {
+                aggiornaInterfaccia(dati);
+            }
+        })
+        .catch(gestisciErrore);
+}
+
+/* Invia una mossa con la versione dello stato su cui il giocatore ha deciso. */
+function invia(url, parametri) {
+    if (richiestaInCorso) {
+        return;
+    }
+    richiestaInCorso = true;
+    document.body.classList.add("in-attesa");
+
+    var query = new URLSearchParams(parametri || {});
+    if (stato) {
+        query.set("versione", stato.versione);
+    }
+    fetch(url + "?" + query.toString(), { method: "POST" })
+        .then(leggiRisposta)
+        .then(aggiornaInterfaccia)
+        .catch(gestisciErrore)
+        .finally(function () {
+            richiestaInCorso = false;
+            document.body.classList.remove("in-attesa");
+        });
 }
 
 function leggiRisposta(risposta) {
-    return risposta.json().then(function (dati) {
-        if (!risposta.ok) {
-            throw new Error(dati.errore || "Richiesta non riuscita. Errore " + risposta.status);
-        }
-        return dati;
-    });
+    return risposta.json()
+        .catch(function () {
+            return {};
+        })
+        .then(function (dati) {
+            if (!risposta.ok) {
+                var errore = new Error(dati.errore || "Richiesta non riuscita. Errore " + risposta.status);
+                errore.status = risposta.status;
+                throw errore;
+            }
+            return dati;
+        });
+}
+
+function gestisciErrore(errore) {
+    if (errore.status === 404) {
+        // la partita è stata resettata: si torna alla registrazione dei giocatori
+        window.location.reload();
+        return;
+    }
+    if (errore.status === 409) {
+        // un altro giocatore ha mosso nel frattempo: mostra lo stato aggiornato
+        fetch("/stato")
+            .then(leggiRisposta)
+            .then(function (dati) {
+                aggiornaInterfaccia(dati);
+                mostraErrore(errore);
+            });
+        return;
+    }
+    mostraErrore(errore);
 }
 
 function mostraErrore(errore) {
@@ -99,8 +168,16 @@ function disegnaTabellone() {
             var cella = cellaDellaGriglia(casella.posizione);
             elemento.style.gridRow = cella.riga;
             elemento.style.gridColumn = cella.colonna;
+            elemento.setAttribute("role", "button");
+            elemento.tabIndex = 0;
             elemento.addEventListener("click", function () {
                 selezionaCasella(casella.posizione);
+            });
+            elemento.addEventListener("keydown", function (evento) {
+                if (evento.key === "Enter" || evento.key === " ") {
+                    evento.preventDefault();
+                    selezionaCasella(casella.posizione);
+                }
             });
             tabellone.appendChild(elemento);
         }
@@ -108,6 +185,7 @@ function disegnaTabellone() {
         elemento.classList.toggle("ipotecata", casella.ipotecata);
         elemento.classList.toggle("selezionata", casella.posizione === casellaSelezionata);
         elemento.title = casella.testo;
+        elemento.setAttribute("aria-label", casella.testo);
 
         var html = "";
         if (casella.tipo === "TERRENO") {
@@ -212,15 +290,19 @@ function disegnaCentro() {
             aggiungiPulsante(azioni, "Non comprare", "btn-outline-secondary",
                 function () { invia("/rifiutaAcquisto"); });
             break;
+        case "ASTA":
+            disegnaAsta(azioni);
+            break;
+        case "SALDO_DEBITO":
+            disegnaDebito(azioni, giocatore);
+            break;
         case "FINE_TURNO":
             aggiungiPulsante(azioni, "Fine turno ➡️", "btn-primary", function () { invia("/fineTurno"); });
             break;
         case "TERMINATA":
-            var nuova = document.createElement("a");
-            nuova.className = "btn btn-success";
-            nuova.href = "/resettaPartita";
-            nuova.textContent = "Nuova partita";
-            azioni.appendChild(nuova);
+            aggiungiPulsante(azioni, "Nuova partita", "btn-success", function () {
+                document.getElementById("form-reset").submit();
+            });
             document.getElementById("termina-button").disabled = true;
             break;
     }
@@ -231,6 +313,59 @@ function disegnaCentro() {
         var li = document.createElement("li");
         li.textContent = evento;
         eventi.appendChild(li);
+    });
+}
+
+function aggiungiInfo(contenitore, html) {
+    var info = document.createElement("div");
+    info.className = "info-fase";
+    info.innerHTML = html;
+    contenitore.appendChild(info);
+}
+
+function disegnaAsta(azioni) {
+    var asta = stato.asta;
+    var casella = stato.caselle[asta.posizione];
+    var offerente = stato.giocatori[asta.offerenteDiTurno];
+    var offertaMinima = asta.offertaMassima + 1;
+
+    var migliore = asta.migliorOfferente === null
+        ? "nessuna offerta"
+        : "offerta più alta <b>" + asta.offertaMassima + "€</b> di " + escape(stato.giocatori[asta.migliorOfferente].nome);
+    aggiungiInfo(azioni, "🔨 Asta per <b>" + escape(casella.testo) + "</b> (valore " + casella.costo + "€): " + migliore
+        + ".<br>Tocca a <b>" + escape(offerente.nome) + "</b> (contanti " + offerente.portafoglio + "€).");
+
+    var campo = document.createElement("input");
+    campo.type = "number";
+    campo.id = "importo-offerta";
+    campo.className = "form-control form-control-sm importo-offerta";
+    campo.min = offertaMinima;
+    campo.max = offerente.portafoglio;
+    campo.value = Math.min(Math.max(offertaMinima, asta.offertaMassima + 10), offerente.portafoglio);
+    campo.setAttribute("aria-label", "Importo dell'offerta");
+    azioni.appendChild(campo);
+
+    aggiungiPulsante(azioni, "Offri", "btn-primary", function () {
+        invia("/offerta", { importo: campo.value });
+    }, offerente.portafoglio < offertaMinima);
+    aggiungiPulsante(azioni, "Ritirati", "btn-outline-secondary", function () {
+        invia("/ritiratiDallAsta");
+    });
+}
+
+function disegnaDebito(azioni, giocatore) {
+    var debito = stato.debito;
+    var creditore = debito.creditore === null ? "alla banca" : "a " + escape(stato.giocatori[debito.creditore].nome);
+    aggiungiInfo(azioni, "⚠️ " + escape(giocatore.nome) + " deve pagare <b>" + debito.importo + "€</b> " + creditore
+        + " ma ha " + giocatore.portafoglio + "€ contanti.<br>Clicca le tue proprietà per vendere edifici o ipotecarle.");
+
+    aggiungiPulsante(azioni, "Paga " + debito.importo + "€", "btn-primary", function () {
+        invia("/pagaDebito");
+    }, giocatore.portafoglio < debito.importo);
+    aggiungiPulsante(azioni, "Dichiara bancarotta", "btn-outline-danger", function () {
+        if (confirm("Dichiarare bancarotta? Uscirai dal gioco.")) {
+            invia("/dichiaraBancarotta");
+        }
     });
 }
 
@@ -278,6 +413,9 @@ function disegnaGiocatori() {
                 var etichetta = document.createElement("span");
                 etichetta.textContent = casella.testo + (casella.ipotecata ? " (ipotecata)" : "");
                 etichetta.style.background = casella.colore ? COLORI_TERRENI[casella.colore] : "#555";
+                if (COLORI_CHIARI.indexOf(casella.colore) >= 0) {
+                    etichetta.classList.add("chiara");
+                }
                 etichetta.addEventListener("click", function () {
                     selezionaCasella(casella.posizione);
                 });
@@ -331,21 +469,28 @@ function disegnaDettaglioCasella() {
     html += '<div class="d-flex flex-wrap gap-1 mt-2" id="azioni-casella"></div></div>';
     contenitore.innerHTML = html;
 
-    var possedutaDalGiocatoreDiTurno = casella.proprietario === stato.giocatoreCorrente && stato.fase !== "TERMINATA";
-    if (possedutaDalGiocatoreDiTurno) {
+    var gestibile = casella.proprietario === stato.giocatoreCorrente && FASI_DI_GESTIONE.indexOf(stato.fase) >= 0;
+    var inDebito = stato.fase === "SALDO_DEBITO";
+    if (gestibile) {
         var azioni = document.getElementById("azioni-casella");
         if (casella.tipo === "TERRENO" && !casella.ipotecata) {
-            aggiungiPulsante(azioni, casella.casette === 4 ? "Costruisci albergo" : "Costruisci casa", "btn-success",
-                function () { invia("/costruisciCasetta/" + casella.posizione); }, casella.casette === 5);
+            if (!inDebito) {
+                aggiungiPulsante(azioni, casella.casette === 4 ? "Costruisci albergo" : "Costruisci casa", "btn-success",
+                    function () { invia("/costruisciCasetta/" + casella.posizione); }, casella.casette === 5);
+            }
             aggiungiPulsante(azioni, "Vendi edificio", "btn-outline-success",
                 function () { invia("/vendiCasetta/" + casella.posizione); }, casella.casette === 0);
         }
-        if (casella.ipotecata) {
+        if (casella.ipotecata && !inDebito) {
             aggiungiPulsante(azioni, "Riscatta ipoteca (" + casella.costoRiscatto + "€)", "btn-warning",
                 function () { invia("/riscattaIpoteca/" + casella.posizione); });
-        } else {
+        } else if (!casella.ipotecata) {
+            // si ipoteca solo dopo aver venduto gli edifici dell'intero gruppo
+            var gruppoConEdifici = casella.colore !== null && stato.caselle.some(function (altra) {
+                return altra.colore === casella.colore && altra.casette > 0;
+            });
             aggiungiPulsante(azioni, "Ipoteca (+" + casella.valoreIpotecario + "€)", "btn-outline-warning",
-                function () { invia("/ipoteca/" + casella.posizione); });
+                function () { invia("/ipoteca/" + casella.posizione); }, gruppoConEdifici);
         }
     }
 }

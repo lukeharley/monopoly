@@ -2,13 +2,6 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Partita",
-      "request": "launch",
-      "mainClass": "com.luca.monopoly.domain.Partita",
-      "projectName": "monopoly"
-    },
-    {
-      "type": "java",
       "name": "Spring Boot-Application<monopoly>",
       "request": "launch",
       "cwd": "${workspaceFolder}",

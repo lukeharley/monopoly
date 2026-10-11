@@ -29,7 +29,7 @@
                         <div class="row mt-3">
                             <label class="col-sm-4 form-label" for="nome">Inserire il nome del giocatore</label>
                             <div class="col-sm-4">
-                                <input class="form-control" type="text" th:field="*{nome}" maxlength="30" required />
+                                <input class="form-control" type="text" th:field="*{nome}" th:maxlength="${T(com.luca.monopoly.service.GiocatoreService).LUNGHEZZA_MASSIMA_NOME}" required />
                             </div>
                         </div>
 
@@ -78,7 +78,9 @@
                 <form th:action="@{/avviaPartita}" method="post">
                     <button type="submit" class="btn btn-success" th:disabled="${#lists.size(giocatori) < 2}">Avvia partita</button>
                 </form>
-                <a class="btn btn-danger" id="reset-button" th:href="@{/resettaPartita}">Resetta giocatori</a>
+                <form th:action="@{/resettaPartita}" method="post">
+                    <button type="submit" class="btn btn-danger" id="reset-button">Resetta giocatori</button>
+                </form>
             </div>
             <p class="text-muted mt-2" th:if="${#lists.size(giocatori) < 2}">Servono almeno 2 giocatori per iniziare.</p>
         </div>
@@ -103,8 +105,10 @@
                 </div>
                 <div class="mt-3 d-flex gap-2 flex-wrap">
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="termina-button">Termina partita</button>
-                    <a class="btn btn-outline-danger btn-sm" id="reset-button" th:href="@{/resettaPartita}"
-                       onclick="return confirm('Vuoi davvero cancellare la partita e i giocatori?');">Resetta partita</a>
+                    <form id="form-reset" th:action="@{/resettaPartita}" method="post"
+                          onsubmit="return confirm('Vuoi davvero cancellare la partita e i giocatori?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" id="reset-button">Resetta partita</button>
+                    </form>
                 </div>
             </div>
         </div>

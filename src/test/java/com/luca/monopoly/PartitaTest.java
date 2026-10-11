@@ -29,6 +29,14 @@ public class PartitaTest {
 		tabellone = partita.getTabellone();
 	}
 
+	/** Rinuncia all'acquisto e chiude l'asta senza offerte: la proprietà resta alla banca. */
+	private void rinunciaSenzaOfferte() {
+		partita.rifiutaAcquisto();
+		while (partita.getFase() == FasePartita.ASTA) {
+			partita.ritiratiDallAsta();
+		}
+	}
+
 	@Test
 	void servono_almeno_due_giocatori() {
 		assertThrows(MossaNonValidaException.class,
@@ -85,10 +93,48 @@ public class PartitaTest {
 	}
 
 	@Test
-	void rifiuto_acquisto() {
+	void rifiuto_acquisto_senza_offerte_la_proprieta_resta_alla_banca() {
 		partita.lanciaDadi(1, 2);
 		partita.rifiutaAcquisto();
+		assertEquals(FasePartita.ASTA, partita.getFase());
+		// offre per primo il giocatore successivo
+		assertEquals(mario, partita.getAsta().getOfferenteDiTurno());
+
+		partita.ritiratiDallAsta();
+		partita.ritiratiDallAsta();
 		assertNull(tabellone.getCasella(3).getProprietario());
+		assertNull(partita.getAsta());
+		assertEquals(FasePartita.FINE_TURNO, partita.getFase());
+	}
+
+	@Test
+	void asta_vinta_dall_offerta_piu_alta() {
+		partita.lanciaDadi(1, 2); // Vicolo Stretto
+		partita.rifiutaAcquisto();
+
+		partita.offri(10); // Mario
+		assertThrows(MossaNonValidaException.class, () -> partita.offri(10)); // Luca: non supera 10
+		assertThrows(MossaNonValidaException.class, () -> partita.offri(5000)); // oltre i contanti
+		partita.offri(20); // Luca
+		partita.ritiratiDallAsta(); // Mario
+
+		assertEquals(luca, tabellone.getCasella(3).getProprietario());
+		assertEquals(1480, luca.getPortafoglio());
+		assertEquals(1500, mario.getPortafoglio());
+		assertEquals(FasePartita.FINE_TURNO, partita.getFase());
+	}
+
+	@Test
+	void asta_vinta_da_un_altro_giocatore() {
+		partita.lanciaDadi(1, 2);
+		partita.rifiutaAcquisto();
+		partita.offri(70); // Mario
+		partita.ritiratiDallAsta(); // Luca
+
+		assertEquals(mario, tabellone.getCasella(3).getProprietario());
+		assertEquals(1430, mario.getPortafoglio());
+		// il turno resta di Luca, che ora può passarlo
+		assertEquals(luca, partita.getGiocatoreCorrente());
 		assertEquals(FasePartita.FINE_TURNO, partita.getFase());
 	}
 
@@ -146,7 +192,7 @@ public class PartitaTest {
 		partita.lanciaDadi(3, 3);
 		assertFalse(luca.isInPrigione());
 		assertEquals(16, luca.getPosizione());
-		partita.rifiutaAcquisto();
+		rinunciaSenzaOfferte();
 		// uscendo con un doppio non si rilancia
 		assertEquals(FasePartita.FINE_TURNO, partita.getFase());
 	}
@@ -163,12 +209,12 @@ public class PartitaTest {
 			partita.fineTurno();
 			partita.lanciaDadi(1, 1); // Mario: Posteggio -> Corso Magellano (doppio)
 			if (partita.getFase() == FasePartita.DECISIONE_ACQUISTO) {
-				partita.rifiutaAcquisto();
+				rinunciaSenzaOfferte();
 			}
 			while (partita.getFase() == FasePartita.LANCIO_DADI) {
 				partita.lanciaDadi(1, 2);
 				if (partita.getFase() == FasePartita.DECISIONE_ACQUISTO) {
-					partita.rifiutaAcquisto();
+					rinunciaSenzaOfferte();
 				}
 			}
 			partita.fineTurno();
@@ -188,7 +234,7 @@ public class PartitaTest {
 			partita.getGiocatoreCorrente().setPosizione(39);
 			partita.lanciaDadi(1, 2); // Probabilità (posizione 2)
 			if (partita.getFase() == FasePartita.DECISIONE_ACQUISTO) {
-				partita.rifiutaAcquisto();
+				rinunciaSenzaOfferte();
 			}
 			partita.fineTurno();
 		}
@@ -197,7 +243,7 @@ public class PartitaTest {
 
 		// Mario finisce in prigione e usa la carta
 		partita.lanciaDadi(1, 2);
-		partita.rifiutaAcquisto();
+		rinunciaSenzaOfferte();
 		partita.fineTurno();
 		mario.setInPrigione(true);
 		mario.setPosizione(10);
@@ -293,8 +339,7 @@ public class PartitaTest {
 		assertEquals(FasePartita.TERMINATA, partita.getFase());
 		assertEquals(mario, partita.getVincitore());
 		assertEquals(mario, vicoloCorto.getProprietario());
-		assertTrue(vicoloCorto.isIpotecata());
-		assertEquals(1500 + 100 + 30, mario.getPortafoglio());
+		assertEquals(1500 + 100, mario.getPortafoglio());
 	}
 
 	@Test
@@ -310,18 +355,18 @@ public class PartitaTest {
 		assertEquals(mario, partita.getGiocatoreCorrente());
 
 		partita.lanciaDadi(1, 2);
-		partita.rifiutaAcquisto();
+		rinunciaSenzaOfferte();
 		partita.fineTurno();
 		assertEquals(anna, partita.getGiocatoreCorrente());
 		partita.lanciaDadi(1, 2);
-		partita.rifiutaAcquisto();
+		rinunciaSenzaOfferte();
 		partita.fineTurno();
 		// Luca è fuori dal gioco: si torna a Mario
 		assertEquals(mario, partita.getGiocatoreCorrente());
 	}
 
 	@Test
-	void vendita_automatica_degli_edifici_per_pagare_un_debito() {
+	void debito_saldato_vendendo_edifici_e_ipotecando() {
 		tabellone.getCasella(1).setProprietario(luca);
 		tabellone.getCasella(3).setProprietario(luca);
 		partita.costruisciCasetta(1);
@@ -330,14 +375,93 @@ public class PartitaTest {
 
 		partita.lanciaDadi(1, 3); // Tassa Patrimoniale: 200 euro
 
-		assertFalse(luca.isInBancarotta());
-		assertEquals(0, tabellone.getCasella(1).getNumeroDiCasetteSullaCasella());
-		assertEquals(0, tabellone.getCasella(3).getNumeroDiCasetteSullaCasella());
-		assertTrue(tabellone.getCasella(1).isIpotecata());
-		assertTrue(tabellone.getCasella(3).isIpotecata());
-		// 100 + 25 + 25 (vendita case) + 30 + 30 (ipoteche) - 200
+		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
+		assertEquals(200, partita.getDebito().importo());
+		assertThrows(MossaNonValidaException.class, () -> partita.fineTurno());
+		assertThrows(MossaNonValidaException.class, () -> partita.pagaDebito());
+		assertThrows(MossaNonValidaException.class, () -> partita.costruisciCasetta(1));
+
+		partita.vendiCasetta(1);
+		partita.vendiCasetta(3);
+		partita.ipoteca(1);
+		partita.ipoteca(3);
+		assertEquals(210, luca.getPortafoglio());
+
+		partita.pagaDebito();
 		assertEquals(10, luca.getPortafoglio());
+		assertNull(partita.getDebito());
 		assertEquals(32, partita.getCasetteDisponibili());
+		assertEquals(FasePartita.FINE_TURNO, partita.getFase());
+	}
+
+	@Test
+	void debito_per_affitto_pagato_al_proprietario() {
+		tabellone.getCasella(3).setProprietario(mario);
+		tabellone.getCasella(1).setProprietario(mario);
+		tabellone.getCasella(39).setProprietario(luca);
+		luca.setPortafoglio(2);
+
+		partita.lanciaDadi(1, 2); // Vicolo Stretto, affitto doppio: 8 euro
+		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
+		assertEquals(mario, partita.getDebito().creditore());
+
+		partita.ipoteca(39);
+		partita.pagaDebito();
+		assertEquals(1508, mario.getPortafoglio());
+		assertEquals(2 + 200 - 8, luca.getPortafoglio());
+	}
+
+	@Test
+	void bancarotta_dichiarata_durante_il_saldo_del_debito() {
+		tabellone.getCasella(1).setProprietario(luca);
+		tabellone.getCasella(3).setProprietario(luca);
+		partita.costruisciCasetta(1);
+		// 150 contanti + 25 (casa) + 60 (ipoteche) bastano per i 200 della tassa
+		luca.setPortafoglio(150);
+
+		partita.lanciaDadi(1, 3);
+		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
+		partita.dichiaraBancarotta();
+
+		assertTrue(luca.isInBancarotta());
+		// gli edifici tornano alla banca e le proprietà sono di nuovo libere
+		assertEquals(32, partita.getCasetteDisponibili());
+		assertNull(tabellone.getCasella(1).getProprietario());
+		assertEquals(0, tabellone.getCasella(1).getNumeroDiCasetteSullaCasella());
+		assertEquals(mario, partita.getVincitore());
+	}
+
+	@Test
+	void multa_di_prigione_pagata_dopo_aver_ipotecato() {
+		tabellone.getCasella(39).setProprietario(luca);
+		luca.setInPrigione(true);
+		luca.setTurniInPrigione(2);
+		luca.setPosizione(10);
+		luca.setPortafoglio(50);
+
+		partita.lanciaDadi(1, 2); // terzo tentativo fallito: multa di 125 euro
+		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
+		assertTrue(luca.isInPrigione());
+
+		partita.ipoteca(39);
+		partita.pagaDebito();
+		// saldata la multa, il segnalino si muove con il lancio fatto
+		assertFalse(luca.isInPrigione());
+		assertEquals(13, luca.getPosizione());
+		assertEquals(FasePartita.DECISIONE_ACQUISTO, partita.getFase());
+	}
+
+	@Test
+	void gestione_proprieta_vietata_durante_l_asta() {
+		tabellone.getCasella(39).setProprietario(luca);
+		partita.lanciaDadi(1, 2);
+		partita.rifiutaAcquisto();
+		assertThrows(MossaNonValidaException.class, () -> partita.ipoteca(39));
+	}
+
+	@Test
+	void dadi_fuori_intervallo_rifiutati() {
+		assertThrows(IllegalArgumentException.class, () -> partita.lanciaDadi(0, 7));
 	}
 
 	@Test

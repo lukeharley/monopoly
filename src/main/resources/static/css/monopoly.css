@@ -218,6 +218,11 @@ h1 {
     text-shadow: 0 0 2px #000;
 }
 
+.proprieta-giocatore span.chiara {
+    color: #212529;
+    text-shadow: none;
+}
+
 @media (max-width: 600px) {
     .dadi {
         font-size: 28px;
@@ -231,4 +236,22 @@ h1 {
         font-size: 11px;
         padding: 4px;
     }
+}
+
+.info-fase {
+    width: 100%;
+    text-align: center;
+}
+
+.importo-offerta {
+    width: 110px;
+}
+
+.in-attesa button {
+    cursor: progress;
+}
+
+.casella:focus-visible {
+    outline: 3px solid #0d6efd;
+    z-index: 3;
 }
