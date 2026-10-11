@@ -68,6 +68,24 @@ public class GiocatoreService {
     }
 
     @Transactional
+    public void rimuoviGiocatore(Segnalini segnalino) {
+        JpaGiocatore jpaGiocatore = jpaGiocatoreRepository.findBySegnalino(segnalino);
+        if (jpaGiocatore != null) {
+            jpaGiocatoreRepository.delete(jpaGiocatore);
+        }
+    }
+
+    /** Riporta i giocatori registrati al portafoglio e alla posizione di partenza. */
+    @Transactional
+    public void azzeraGiocatori() {
+        for (JpaGiocatore jpaGiocatore : jpaGiocatoreRepository.findAll()) {
+            jpaGiocatore.setPortafoglio(Partita.PORTAFOGLIO_INIZIALE);
+            jpaGiocatore.setPosizione(0);
+            jpaGiocatoreRepository.save(jpaGiocatore);
+        }
+    }
+
+    @Transactional
     public void eliminaGiocatori() {
 
         jpaGiocatoreRepository.deleteAll();

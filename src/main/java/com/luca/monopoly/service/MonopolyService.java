@@ -5,6 +5,7 @@ import com.luca.monopoly.domain.Monopoly;
 import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.domain.PartitaAssenteException;
+import com.luca.monopoly.domain.Segnalini;
 import com.luca.monopoly.domain.StatoCambiatoException;
 import com.luca.monopoly.domain.giocatore.Giocatore;
 import com.luca.monopoly.repository.JpaGiocatore;
@@ -81,6 +82,21 @@ public class MonopolyService {
         versione++;
         giocatoreService.salvaStato(partita.getGiocatori());
         return vista.apply(partita, versione);
+    }
+
+    /** Chiude la partita ma tiene al tavolo gli stessi giocatori, pronti per una nuova. */
+    public synchronized void nuovaPartita() {
+        partita = null;
+        versione++;
+        giocatoreService.azzeraGiocatori();
+    }
+
+    public synchronized void rimuoviGiocatore(Segnalini segnalino) {
+        if (partita != null) {
+            throw new MossaNonValidaException(
+                    "La partita è già iniziata: resettala per togliere giocatori dal tavolo.");
+        }
+        giocatoreService.rimuoviGiocatore(segnalino);
     }
 
     public synchronized void resettaPartita() {

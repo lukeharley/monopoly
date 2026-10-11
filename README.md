@@ -6,7 +6,7 @@ Il Monopoly nella **versione italiana in euro**, giocabile nel browser da 2 a 8 
 Applicazione web **Java 17 + Spring Boot 3**: le regole stanno sul server, l'interfaccia è una pagina
 HTML/JavaScript che mostra il tabellone e invia le mosse.
 
-![Una partita in corso: tabellone, giocatori, registro degli eventi e dettaglio di una proprietà](docs/partita.png)
+![Una partita in corso: tabellone, giocatori e registro della partita](docs/screenshots/partita.png)
 
 ## Caratteristiche
 
@@ -68,9 +68,34 @@ DB_PASSWORD=la-tua-password mvn spring-boot:run
 3. Vince l'ultimo giocatore non in bancarotta. **Termina partita** chiude prima la partita e proclama vincitore
    chi ha il patrimonio più alto.
 
-| Lobby | Fine partita |
+## Interfaccia
+
+Stile "Tavolo": panno verde, tabellone color crema, titoli in serif. Pensata per schermi desktop (il tabellone non scende sotto 720px).
+
+**Setup giocatori**: nome, scelta del segnalino tra quelli liberi, posti al tavolo con il pulsante × per togliere un giocatore.
+
+![Setup giocatori](docs/screenshots/setup.png)
+
+**Partita in corso**: tabellone con case, alberghi, pallino del proprietario e ipoteche; dadi, turno e azioni al centro;
+giocatori e registro della partita nella barra laterale.
+
+![Partita in corso](docs/screenshots/partita.png)
+
+**Contratto di proprietà**: si apre cliccando una casella. Mostra la tabella degli affitti con l'affitto attuale evidenziato;
+le azioni non consentite (costruire senza il gruppo completo, vendere in modo non uniforme...) restano disattivate e il motivo compare sotto.
+
+![Contratto di proprietà](docs/screenshots/contratto.png)
+
+**Asta**: se il giocatore rinuncia a comprare, la proprietà va all'asta. Al centro del tabellone si vede chi deve offrire,
+l'offerta più alta e i suoi contanti. Con un **debito** da saldare compaiono invece "Paga" e "Dichiara bancarotta".
+
+![Asta](docs/screenshots/asta.png)
+
+**Carte Imprevisti e Probabilità** e **fine partita** con la classifica.
+
+| Carta Imprevisti | Fine partita |
 |---|---|
-| ![Registrazione dei giocatori](docs/lobby.png) | ![Vittoria dopo le bancarotte degli altri giocatori](docs/fine-partita.png) |
+| ![Carta Imprevisti](docs/screenshots/carta.png) | ![Fine partita](docs/screenshots/vincitore.png) |
 
 ## Regole implementate
 
@@ -156,7 +181,8 @@ Ogni `POST` accetta il parametro facoltativo `versione`. Codici di risposta:
 | `409` | La partita è cambiata nel frattempo: aggiornare lo stato e riprovare |
 | `422` | Mossa non ammessa dalle regole (il messaggio è nel campo `errore`) |
 
-La lobby usa form classici: `POST /` aggiunge un giocatore, `POST /avviaPartita` avvia la partita,
+La lobby usa form classici: `POST /` aggiunge un giocatore, `POST /rimuoviGiocatore` lo toglie dal tavolo,
+`POST /avviaPartita` avvia la partita, `POST /nuovaPartita` chiude la partita tenendo gli stessi giocatori,
 `POST /resettaPartita` cancella partita e giocatori.
 
 ## Test

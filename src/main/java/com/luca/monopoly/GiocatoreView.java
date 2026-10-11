@@ -8,6 +8,8 @@ public class GiocatoreView {
 
     private String segnalino;
 
+    private int valoreSegnalino;
+
     public String getNome() {
         return nome;
     }
@@ -30,5 +32,13 @@ public class GiocatoreView {
 
     public void setSegnalino(String segnalino) {
         this.segnalino = segnalino;
+    }
+
+    public int getValoreSegnalino() {
+        return valoreSegnalino;
+    }
+
+    public void setValoreSegnalino(int valoreSegnalino) {
+        this.valoreSegnalino = valoreSegnalino;
     }
 }

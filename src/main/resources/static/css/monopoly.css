@@ -1,257 +1,1382 @@
+/* Direzione "Tavolo": panno verde, tabellone color crema, titoli in serif */
+:root {
+    --panno: #23402f;
+    --inchiostro: #2a2119;
+    --inchiostro-tenue: #4a3e31;
+    --tenue: #6b5d4c;
+    --carta: #f4ecd8;
+    --carta-chiara: #fbf6e9;
+    --casella: #f7f0de;
+    --centro: #ece1c5;
+    --linea: #d3c5a6;
+    --linea-scura: #b9a985;
+    --rosso: #a8322a;
+    --rosso-scuro: #7d231d;
+    --verde: #2f5a40;
+    --oro: #d9a632;
+    --imprevisti: #e07a2e;
+    --imprevisti-scuro: #c9622a;
+    --probabilita: #3c79a8;
+    --probabilita-scuro: #2f6390;
+    --serif: 'Alegreya', serif;
+}
+
 [hidden] {
     display: none !important;
 }
 
-h1 {
-    color: brown;
+* {
+    box-sizing: border-box;
 }
 
-#reset-button {
-    line-height: 1.6;
+body {
+    margin: 0;
+    background: var(--panno);
+    color: var(--inchiostro);
+    font-family: 'Alegreya Sans', sans-serif;
 }
 
-.segnalino-lobby {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-    margin-bottom: 8px;
+a {
+    color: var(--rosso);
 }
 
-/* ---------- Partita ---------- */
+a:hover {
+    color: var(--rosso-scuro);
+}
 
-.partita {
+input:focus {
+    outline: none;
+}
+
+.tenue {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--tenue);
+}
+
+.logo {
+    font-family: var(--serif);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--rosso);
+    letter-spacing: -.01em;
+}
+
+.etichetta {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--tenue);
+}
+
+/* Colori dei giocatori, nell'ordine di arrivo al tavolo */
+.colore-giocatore-0 { background: #2a5c9a; }
+.colore-giocatore-1 { background: #b23a30; }
+.colore-giocatore-2 { background: #3d7a46; }
+.colore-giocatore-3 { background: #c98a16; }
+.colore-giocatore-4 { background: #6b3d8f; }
+.colore-giocatore-5 { background: #2b8a8a; }
+.colore-giocatore-6 { background: #c96a26; }
+.colore-giocatore-7 { background: #5b4636; }
+
+/* ------------------------------------------------------------------ */
+/* Pulsanti                                                            */
+/* ------------------------------------------------------------------ */
+
+.btn {
+    display: inline-block;
+    white-space: nowrap;
+    font: inherit;
+    font-weight: 800;
+    font-size: 16px;
+    line-height: 1.2;
+    padding: 11px 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--inchiostro);
+    background: transparent;
+    color: var(--inchiostro);
+    box-shadow: 0 3px 0 var(--inchiostro);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    color: inherit;
+}
+
+.btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.btn-rosso { background: var(--rosso); color: var(--carta-chiara); }
+.btn-verde { background: var(--verde); color: var(--carta-chiara); }
+.btn-oro { background: var(--oro); color: var(--inchiostro); }
+.btn-rosso:hover, .btn-verde:hover { color: var(--carta-chiara); }
+
+.btn-vuoto {
+    font-weight: 700;
+    font-size: 17px;
+    padding: 13px 22px;
+    box-shadow: none;
+}
+
+.btn-vuoto:hover {
+    color: var(--inchiostro);
+}
+
+.btn-grande {
+    font-size: 19px;
+    padding: 14px 30px;
+}
+
+.btn-piccolo {
+    font-size: 14px;
+    padding: 8px 14px;
+    box-shadow: 0 2px 0 var(--inchiostro);
+}
+
+/* ------------------------------------------------------------------ */
+/* Setup giocatori                                                     */
+/* ------------------------------------------------------------------ */
+
+.setup {
+    min-height: 100vh;
     display: flex;
-    gap: 20px;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
+    padding: 40px 24px;
 }
 
-.pannello {
-    width: 340px;
-    max-width: 100%;
+.setup-foglio {
+    width: 100%;
+    max-width: 1060px;
+    background: var(--carta);
+    border-radius: 10px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, .35);
+    padding: 44px 52px;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
 }
 
-/* Tabellone 11x11: le 40 caselle occupano il bordo, il centro è libero */
-.tabellone {
+.setup-testata {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    border-bottom: 2px solid var(--inchiostro);
+    padding-bottom: 26px;
+}
+
+.setup-testata img {
+    height: 92px;
+    mix-blend-mode: multiply;
+}
+
+.setup-titoli {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.setup-titoli .logo {
+    font-size: 68px;
+}
+
+.setup-benvenuto {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+}
+
+.avviso {
+    margin-top: -14px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--rosso);
+    border-radius: 6px;
+    background: var(--carta-chiara);
+    color: var(--rosso);
+    font-weight: 700;
+}
+
+.setup-colonne {
     display: grid;
-    grid-template-columns: 1.5fr repeat(9, 1fr) 1.5fr;
-    grid-template-rows: 1.5fr repeat(9, 1fr) 1.5fr;
-    width: min(100%, 820px);
-    aspect-ratio: 1;
-    background: #cde6d0;
-    border: 2px solid #222;
-    font-size: clamp(6px, 1.1vw, 10px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 48px;
 }
 
-.casella {
+.setup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+label.campo {
+    gap: 8px;
+}
+
+.campo input[type=text] {
+    white-space: nowrap;
+    font: inherit;
+    font-weight: 500;
+    font-size: 18px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--inchiostro);
+    border-radius: 6px;
+    background: var(--carta-chiara);
+    color: var(--inchiostro);
+}
+
+.scelta-segnalini {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.scelta-segnalino {
     position: relative;
-    border: 1px solid #555;
-    background: #f7f4ea;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1px solid var(--linea);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    text-align: center;
-    overflow: hidden;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 700;
     cursor: pointer;
-    padding: 1px;
 }
 
-.casella:hover {
-    outline: 2px solid #0d6efd;
-    z-index: 2;
-}
-
-.casella.selezionata {
-    outline: 3px solid #0d6efd;
-    z-index: 3;
-}
-
-.casella .banda {
-    width: 100%;
-    min-height: 18%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1px;
-}
-
-.casella .nome {
-    font-weight: 600;
-    line-height: 1.1;
-    padding: 0 1px;
-}
-
-.casella .prezzo {
-    font-size: 0.9em;
-}
-
-.casella .proprietario {
+.scelta-segnalino input {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-}
-
-.casella.ipotecata {
-    background: repeating-linear-gradient(45deg, #eee, #eee 4px, #ccc 4px, #ccc 8px);
-}
-
-.casella .segnalini {
-    position: absolute;
-    inset: 20% 0 4px 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
+    opacity: 0;
     pointer-events: none;
 }
 
-.casella .segnalini img {
-    width: 45%;
-    max-width: 30px;
-    filter: drop-shadow(0 0 2px #fff);
+.scelta-segnalino img {
+    width: 62%;
+    height: 62%;
+    object-fit: contain;
 }
 
-.casella .segnalini img.corrente {
-    filter: drop-shadow(0 0 3px #0d6efd) drop-shadow(0 0 3px #0d6efd);
+.scelta-segnalino:has(input:checked) {
+    background: var(--carta-chiara);
+    border: 2px solid var(--inchiostro);
+}
+
+.scelta-segnalino:has(input:focus-visible) {
+    box-shadow: 0 0 0 3px var(--oro);
+}
+
+.scelta-segnalino.preso {
+    opacity: .32;
+    cursor: not-allowed;
+}
+
+.badge-preso {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--tenue);
+}
+
+.btn-aggiungi {
+    align-self: flex-start;
+    font-weight: 700;
+    font-size: 17px;
+    padding: 12px 22px;
+}
+
+/* Il nome è obbligatorio: finché manca il pulsante appare disattivato */
+.setup-form:invalid .btn-aggiungi {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.tavolo {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tavolo-testata {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.posto {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--carta-chiara);
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+.posto > img {
+    width: 46px;
+    height: 46px;
+    object-fit: contain;
+    flex: none;
+}
+
+.posto-numero {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: var(--carta-chiara);
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+
+.posto-testo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.posto-nome {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: 20px;
+}
+
+.posto form {
+    margin: 0;
+}
+
+.posto-togli {
+    font: inherit;
+    font-size: 20px;
+    line-height: 1;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--linea);
+    background: transparent;
+    color: var(--tenue);
+    cursor: pointer;
+}
+
+.posto-libero {
+    border: 1.5px dashed var(--linea-scura);
+    border-radius: 8px;
+    padding: 18px 14px;
+    text-align: center;
+    color: var(--tenue);
+    font-size: 15px;
+}
+
+.setup-piede {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-top: 1px solid var(--linea);
+    padding-top: 26px;
+}
+
+.setup-piede form {
+    margin: 0;
+}
+
+.setup-piede .tenue {
+    font-size: 15px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Partita in corso                                                    */
+/* ------------------------------------------------------------------ */
+
+.partita {
+    height: 100vh;
+    display: flex;
+    gap: 26px;
+    padding: 20px 26px;
+    justify-content: center;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.area-tabellone {
+    position: relative;
+    flex: none;
+    height: min(calc(100vh - 40px), calc(100vw - 500px));
+    min-height: 720px;
+    aspect-ratio: 1;
+}
+
+.tabellone {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1.6fr repeat(9, minmax(0, 1fr)) 1.6fr;
+    grid-template-rows: 1.6fr repeat(9, minmax(0, 1fr)) 1.6fr;
+    gap: 1.5px;
+    background: var(--inchiostro);
+    border: 3px solid var(--inchiostro);
+    box-shadow: 0 24px 50px rgba(0, 0, 0, .4);
+}
+
+/* Caselle: la banda colorata guarda sempre verso il centro del tabellone */
+.casella {
+    position: relative;
+    display: flex;
+    background: var(--casella);
+    cursor: pointer;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+}
+
+.casella.lato-b { flex-direction: column; }
+.casella.lato-t { flex-direction: column-reverse; }
+.casella.lato-l { flex-direction: row-reverse; }
+.casella.lato-r { flex-direction: row; }
+
+.banda {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: 0 solid var(--inchiostro);
+}
+
+.lato-b .banda, .lato-t .banda { width: 100%; height: 17px; flex-direction: row; }
+.lato-l .banda, .lato-r .banda { width: 17px; height: 100%; flex-direction: column; }
+.lato-b .banda { border-bottom-width: 1.5px; }
+.lato-t .banda { border-top-width: 1.5px; }
+.lato-l .banda { border-left-width: 1.5px; }
+.lato-r .banda { border-right-width: 1.5px; }
+
+.banda-etichetta {
+    font-size: 7.5px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    color: var(--casella);
+}
+
+.lato-l .banda-etichetta, .lato-r .banda-etichetta {
+    writing-mode: vertical-rl;
 }
 
 .casa {
     width: 8px;
     height: 8px;
-    background: #2e7d32;
-    border: 1px solid #fff;
+    background: var(--casella);
+    border: 1px solid var(--inchiostro);
+    flex: none;
 }
 
 .albergo {
-    width: 18px;
+    width: 16px;
     height: 9px;
-    background: #c62828;
-    border: 1px solid #fff;
+    background: #cf3b2e;
+    border: 1px solid var(--inchiostro);
+    flex: none;
 }
 
-.centro {
-    grid-row: 2 / 11;
-    grid-column: 2 / 11;
+.lato-l .albergo, .lato-r .albergo {
+    width: 9px;
+    height: 16px;
+}
+
+.casella-corpo {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px;
-    gap: 8px;
-    font-size: 14px;
-    overflow: hidden;
+    justify-content: space-between;
+    padding: 6px 3px 5px;
+    text-align: center;
 }
 
-.dadi {
-    font-size: 48px;
+.ipotecata .casella-corpo {
+    opacity: .4;
+}
+
+.casella-nome {
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.12;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    text-wrap: balance;
+}
+
+.casella-simbolo {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 28px;
     line-height: 1;
 }
 
-.turno {
-    font-size: 18px;
-    font-weight: 600;
+.casella-prezzo {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--inchiostro-tenue);
+}
+
+.angolo {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.angolo-testo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1px;
+}
+
+.angolo-piccolo {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--tenue);
+}
+
+.angolo-grande {
+    font-family: var(--serif);
+    font-weight: 900;
+    line-height: 1;
+}
+
+.timbro-ipoteca {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%) rotate(-28deg);
+    text-align: center;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    color: var(--rosso);
+}
+
+/* Il pallino sta accanto al prezzo, in basso, per non coprire il nome della casella */
+.proprietario {
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: 1.5px solid var(--casella);
+    box-shadow: 0 0 0 1px var(--inchiostro);
+    bottom: 4px;
+    right: 4px;
+}
+
+.lato-t .proprietario { bottom: calc(17px + 4px); }
+.lato-l .proprietario { right: auto; left: 4px; }
+
+.casella:focus-visible {
+    outline: 3px solid var(--oro);
+    outline-offset: -3px;
+    z-index: 3;
+}
+
+.casella.selezionata::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--rosso);
+    pointer-events: none;
+}
+
+.segnalini {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    padding: 4px;
+}
+
+.segnalini img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    margin: -5px;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45));
+}
+
+.casella.angolare .segnalini img {
+    width: 44px;
+    height: 44px;
+}
+
+.segnalini img.corrente {
+    filter: drop-shadow(0 0 3px #ffd34d) drop-shadow(0 2px 2px rgba(0, 0, 0, .5));
+}
+
+/* Centro del tabellone */
+.centro {
+    grid-row: 2 / 11;
+    grid-column: 2 / 11;
+    background: var(--centro);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    padding: 24px;
+    position: relative;
+}
+
+.centro-logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.centro-logo img {
+    height: 70px;
+    mix-blend-mode: multiply;
+}
+
+.centro-logo .logo {
+    font-size: 62px;
+}
+
+.centro-gioco {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+    max-width: 640px;
+}
+
+.mazzo {
+    position: relative;
+    width: 96px;
+    height: 128px;
+}
+
+.mazzo-imprevisti { transform: rotate(-8deg); }
+.mazzo-probabilita { transform: rotate(8deg); }
+
+.mazzo-ombra, .mazzo-carta {
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid var(--inchiostro);
+    border-radius: 6px;
+}
+
+.mazzo-imprevisti .mazzo-ombra { transform: translate(6px, 6px); background: var(--imprevisti-scuro); }
+.mazzo-probabilita .mazzo-ombra { transform: translate(-6px, 6px); background: var(--probabilita-scuro); }
+
+.mazzo-carta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .14em;
+}
+
+.mazzo-imprevisti .mazzo-carta { background: var(--imprevisti); color: var(--inchiostro); }
+.mazzo-probabilita .mazzo-carta { background: var(--probabilita); color: var(--carta-chiara); }
+
+.mazzo-simbolo {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 48px;
+    line-height: 1;
+    letter-spacing: 0;
+}
+
+.centro-turno {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
     text-align: center;
 }
 
-.carta {
-    background: #fff8e1;
-    border: 2px solid #f9a825;
+.dadi {
+    display: flex;
+    gap: 14px;
+}
+
+.dado {
+    width: 64px;
+    height: 64px;
+    background: var(--carta-chiara);
+    border: 2px solid var(--inchiostro);
+    border-radius: 12px;
+    box-shadow: 0 4px 0 var(--inchiostro);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 9px;
+}
+
+.dado span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dado span::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dado span.punto::before {
+    background: var(--inchiostro);
+}
+
+.turno {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.turno img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.turno-testo {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.turno-stato {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--tenue);
+    max-width: 380px;
+    text-wrap: pretty;
+}
+
+/* Importo dell'offerta durante l'asta */
+.campo-offerta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1.5px solid var(--inchiostro);
     border-radius: 6px;
-    padding: 6px 10px;
-    max-width: 90%;
-    text-align: center;
+    background: var(--carta-chiara);
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.campo-offerta input {
+    width: 72px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: var(--inchiostro);
+    text-align: right;
+}
+
+.campo-offerta:focus-within {
+    box-shadow: 0 0 0 3px var(--oro);
+}
+
+/* Mentre il server risponde i pulsanti non accettano altri clic */
+.in-attesa .btn, .in-attesa .btn-chiaro {
+    cursor: progress;
+}
+
+.errore {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--rosso);
 }
 
 .azioni {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
     justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
 }
 
-.eventi {
-    width: 100%;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    background: rgba(255, 255, 255, 0.7);
+.ultimo-evento {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--inchiostro-tenue);
+    max-width: 360px;
+    text-wrap: pretty;
+}
+
+.centro-aiuto {
+    font-size: 13px;
+    color: var(--tenue);
+}
+
+/* Veli sopra il tabellone: contratto e carta pescata */
+.velo {
+    position: absolute;
+    inset: 0;
+    background: rgba(42, 33, 25, .38);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+}
+
+.velo-carta {
+    background: rgba(42, 33, 25, .45);
+    z-index: 6;
+}
+
+.contratto {
+    width: 320px;
+    background: var(--carta-chiara);
+    border: 1.5px solid var(--inchiostro);
     border-radius: 6px;
-    padding: 6px 6px 6px 24px;
-    margin: 0;
+    padding: 10px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, .4);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+}
+
+.contratto-chiudi {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--inchiostro);
+    background: var(--carta-chiara);
+    font: inherit;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--inchiostro);
+}
+
+.contratto-testata {
+    border: 1.5px solid var(--inchiostro);
+    padding: 12px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contratto-tipo {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+}
+
+.contratto-nome {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 24px;
+    line-height: 1.05;
+}
+
+.contratto-righe {
+    display: flex;
+    flex-direction: column;
+    padding: 0 6px;
+}
+
+.contratto-riga {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 15px;
+    padding: 4px 6px;
+}
+
+.contratto-riga.attuale {
+    font-weight: 800;
+    background: #efe2bf;
+}
+
+.contratto-riga.separata {
+    border-top: 1px solid var(--inchiostro);
+}
+
+.contratto-proprietario {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--inchiostro);
+    font-size: 15px;
+}
+
+.contratto-proprietario img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.contratto-nota {
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--rosso);
+}
+
+.contratto-azioni {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 6px 6px;
+}
+
+.contratto-motivi {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: -6px;
+    padding: 0 8px 6px;
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--tenue);
+}
+
+.carta {
+    width: 440px;
+    border: 2px solid var(--inchiostro);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 24px 50px rgba(0, 0, 0, .45);
+    transform: rotate(-1.5deg);
+}
+
+.carta.imprevisti { background: var(--imprevisti); --colore-mazzo: var(--imprevisti); }
+.carta.probabilita { background: var(--probabilita); --colore-mazzo: var(--probabilita); }
+
+.carta-interno {
+    background: var(--carta-chiara);
+    border: 1.5px solid var(--inchiostro);
+    border-radius: 6px;
+    padding: 22px 26px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+}
+
+.carta-mazzo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+}
+
+.carta-simbolo {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: 0;
+    color: var(--colore-mazzo);
+}
+
+.carta-testo {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.25;
+    text-wrap: balance;
+}
+
+.btn-scuro {
+    background: var(--inchiostro);
+    color: var(--carta-chiara);
+    box-shadow: none;
+    padding: 10px 26px;
+}
+
+.btn-scuro:hover {
+    color: var(--carta-chiara);
+}
+
+/* Barra laterale: giocatori e registro */
+.pannello {
+    width: 420px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+}
+
+.giocatori {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.giocatore {
+    background: var(--carta);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    flex: none;
+}
+
+.giocatore.corrente {
+    background: var(--carta-chiara);
+    box-shadow: 0 0 0 3px var(--oro), 0 10px 22px rgba(0, 0, 0, .3);
+}
+
+.giocatore.bancarotta {
+    opacity: .5;
+}
+
+.giocatore > img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    flex: none;
+}
+
+.giocatore.bancarotta > img {
+    filter: grayscale(1);
+}
+
+.giocatore-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.giocatore-riga {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.giocatore-colore {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+}
+
+.giocatore-nome {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.giocatore-segnalino {
+    font-size: 13px;
+    color: var(--tenue);
+}
+
+.badge-turno {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    background: var(--inchiostro);
+    color: var(--carta-chiara);
+    padding: 3px 7px;
+    border-radius: 3px;
+}
+
+.giocatore-soldi {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.giocatore-portafoglio {
+    font-weight: 800;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.giocatore-patrimonio {
+    font-size: 13px;
+    color: var(--tenue);
+}
+
+.giocatore-stato {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--rosso);
+}
+
+.giocatore-proprieta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+.giocatore-proprieta span {
+    width: 15px;
+    height: 20px;
+    border: 1px solid var(--inchiostro);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.giocatore-proprieta span.ipotecata {
+    opacity: .35;
+}
+
+.registro {
+    flex: 1;
+    min-height: 140px;
+    background: var(--carta);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.registro-testata {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 16px 8px;
+    border-bottom: 1.5px solid var(--inchiostro);
+}
+
+.registro-testata .tenue {
     font-size: 12px;
 }
 
-.giocatore-card {
-    border-left: 6px solid transparent;
+.etichetta-registro {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
 }
 
-.giocatore-card.corrente {
-    box-shadow: 0 0 0 2px #0d6efd;
+.registro-eventi {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 16px 10px;
 }
 
-.giocatore-card.bancarotta {
-    opacity: 0.5;
+.registro-eventi div {
+    font-size: 14.5px;
+    line-height: 1.35;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--linea);
+    color: var(--inchiostro-tenue);
+    text-wrap: pretty;
 }
 
-.giocatore-card img {
+.registro-eventi div:first-child {
+    font-weight: 700;
+    color: var(--inchiostro);
+}
+
+.pannello-piede {
+    display: flex;
+    gap: 10px;
+    flex: none;
+}
+
+.pannello-piede form {
+    margin: 0;
+}
+
+.btn-chiaro, .btn-link-chiaro {
+    white-space: nowrap;
+    font: inherit;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1.5px solid var(--carta);
+    background: transparent;
+    color: var(--carta);
+    cursor: pointer;
+}
+
+.btn-chiaro:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.btn-link-chiaro {
+    border-color: transparent;
+    text-decoration: underline;
+}
+
+.btn-link-chiaro:hover {
+    color: var(--carta-chiara);
+}
+
+/* Fine partita */
+.velo-vincitore {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 28, 22, .72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+.vincitore {
+    width: 520px;
+    background: var(--carta);
+    border-radius: 10px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, .5);
+    padding: 36px 40px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.vincitore .etichetta {
+    font-size: 12px;
+    letter-spacing: .2em;
+}
+
+.vincitore-medaglia {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: var(--centro);
+    border: 2px solid var(--inchiostro);
+    box-shadow: 0 0 0 8px var(--oro);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vincitore-medaglia img {
+    width: 110px;
+    height: 110px;
+    object-fit: contain;
+}
+
+.vincitore-titolo {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 40px;
+    line-height: 1.05;
+}
+
+.vincitore-patrimonio {
+    font-size: 17px;
+    color: var(--inchiostro-tenue);
+}
+
+.classifica {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    border-top: 1.5px solid var(--inchiostro);
+    margin-top: 6px;
+}
+
+.classifica-riga {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 4px;
+    border-bottom: 1px dashed #c9b994;
+}
+
+.classifica-riga.bancarotta {
+    opacity: .55;
+}
+
+.classifica-posizione {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 20px;
+    width: 22px;
+}
+
+.classifica-riga img {
     width: 32px;
     height: 32px;
     object-fit: contain;
 }
 
-.proprieta-giocatore {
+.classifica-nome {
+    font-weight: 700;
+    font-size: 17px;
+    flex: 1;
+    text-align: left;
+}
+
+.classifica-valore {
+    font-size: 15px;
+    color: var(--tenue);
+}
+
+.vincitore-azioni {
     display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    margin-top: 4px;
+    gap: 12px;
+    margin-top: 8px;
 }
 
-.proprieta-giocatore span {
-    font-size: 11px;
-    padding: 1px 4px;
-    border-radius: 3px;
-    color: #fff;
-    cursor: pointer;
-    text-shadow: 0 0 2px #000;
+.vincitore-azioni form {
+    margin: 0;
 }
 
-.proprieta-giocatore span.chiara {
-    color: #212529;
-    text-shadow: none;
+.vincitore-azioni .btn-rosso {
+    font-size: 18px;
+    padding: 12px 26px;
 }
 
-@media (max-width: 600px) {
-    .dadi {
-        font-size: 28px;
-    }
-
-    .turno {
-        font-size: 13px;
-    }
-
-    .centro {
-        font-size: 11px;
-        padding: 4px;
-    }
-}
-
-.info-fase {
-    width: 100%;
-    text-align: center;
-}
-
-.importo-offerta {
-    width: 110px;
-}
-
-.in-attesa button {
-    cursor: progress;
-}
-
-.casella:focus-visible {
-    outline: 3px solid #0d6efd;
-    z-index: 3;
+.vincitore-azioni .btn-vuoto {
+    font-size: 16px;
+    padding: 12px 20px;
 }
