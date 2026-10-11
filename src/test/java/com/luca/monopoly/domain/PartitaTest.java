@@ -486,4 +486,55 @@ public class PartitaTest {
 		assertEquals(0, luca.getTurniInPrigione());
 		assertThrows(MossaNonValidaException.class, () -> luca.usaCartaUscitaDiPrigione());
 	}
+	@Test
+	void riparazioni_contano_case_e_alberghi() {
+		// mazzi non mescolati: la terza carta Imprevisti chiede 60€ per casa e 250€ per albergo
+		tabellone.getCasella(1).assegnaA(luca);
+		tabellone.getCasella(3).assegnaA(luca);
+		conEdifici(tabellone.getCasella(1), Casella.ALBERGO);
+		conEdifici(tabellone.getCasella(3), 2);
+
+		luca.spostaA(4);
+		partita.lanciaDadi(1, 2); // Imprevisti: "Andate sino al Largo Colombo"
+		rinunciaSenzaOfferte();
+		partita.fineTurno();
+		mario.spostaA(4);
+		partita.lanciaDadi(1, 2); // Imprevisti: "Andate in prigione"
+		partita.fineTurno();
+		luca.spostaA(4);
+		partita.lanciaDadi(1, 2); // Imprevisti: riparazioni
+
+		assertEquals(1500 - (2 * 60 + 250), luca.getPortafoglio());
+	}
+
+	@Test
+	void bancarotta_verso_un_giocatore_cede_anche_le_carte_uscita_di_prigione() {
+		Casella parco = tabellone.getCasella(39);
+		parco.assegnaA(mario);
+		conEdifici(parco, Casella.ALBERGO);
+		luca.riceviCartaUscitaDiPrigione(tabellone.getProbabilita().get(5));
+		conContanti(luca, 100);
+		luca.spostaA(35);
+
+		partita.lanciaDadi(1, 3); // Parco della Vittoria con albergo: 2000€
+
+		assertTrue(luca.isInBancarotta());
+		assertEquals(0, luca.getNumeroCarteUscitaDiPrigione());
+		assertEquals(1, mario.getNumeroCarteUscitaDiPrigione());
+		assertEquals(1500 + 100, mario.getPortafoglio());
+		assertEquals(0, luca.getPortafoglio());
+	}
+
+	@Test
+	void terminare_durante_un_debito_lo_annulla_e_lo_registra() {
+		tabellone.getCasella(39).assegnaA(luca);
+		conContanti(luca, 100);
+		partita.lanciaDadi(1, 3); // Tassa Patrimoniale: 200€
+		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
+
+		partita.terminaPartita();
+
+		assertNull(partita.getDebito());
+		assertTrue(partita.getEventi().contains("Il debito di 200€ di Luca è annullato."));
+	}
 }

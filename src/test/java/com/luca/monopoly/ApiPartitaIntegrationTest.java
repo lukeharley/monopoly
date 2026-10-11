@@ -1,5 +1,6 @@
 package com.luca.monopoly;
 
+import com.luca.monopoly.domain.Segnalini;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,8 +43,8 @@ class ApiPartitaIntegrationTest {
 		mockMvc.perform(post("/resettaPartita")).andExpect(status().is3xxRedirection());
 	}
 
-	private void aggiungiGiocatore(String nome, int segnalino) throws Exception {
-		mockMvc.perform(post("/").param("nome", nome).param("segnalino", String.valueOf(segnalino)))
+	private void aggiungiGiocatore(String nome, Segnalini segnalino) throws Exception {
+		mockMvc.perform(post("/").param("nome", nome).param("segnalino", segnalino.name()))
 				.andExpect(status().is3xxRedirection());
 	}
 
@@ -54,8 +55,8 @@ class ApiPartitaIntegrationTest {
 	}
 
 	private void avviaPartitaConDueGiocatori() throws Exception {
-		aggiungiGiocatore("Luca", 0);
-		aggiungiGiocatore("Mario", 1);
+		aggiungiGiocatore("Luca", Segnalini.CANE);
+		aggiungiGiocatore("Mario", Segnalini.DINOSAURO);
 		mockMvc.perform(post("/avviaPartita")).andExpect(status().is3xxRedirection());
 	}
 
@@ -68,18 +69,24 @@ class ApiPartitaIntegrationTest {
 
 	@Test
 	void segnalino_duplicato_e_nome_vuoto_rifiutati() throws Exception {
-		aggiungiGiocatore("Luca", 0);
-		mockMvc.perform(post("/").param("nome", "Mario").param("segnalino", "0"))
+		aggiungiGiocatore("Luca", Segnalini.CANE);
+		mockMvc.perform(post("/").param("nome", "Mario").param("segnalino", "CANE"))
 				.andExpect(flash().attribute("messaggio", "Il segnalino selezionato è già stato scelto."));
-		mockMvc.perform(post("/").param("nome", "  ").param("segnalino", "1"))
+		mockMvc.perform(post("/").param("nome", "  ").param("segnalino", "DINOSAURO"))
 				.andExpect(flash().attribute("messaggio", "Inserire il nome del giocatore."));
-		mockMvc.perform(post("/").param("nome", "X".repeat(31)).param("segnalino", "1"))
-				.andExpect(flash().attributeExists("messaggio"));
+		mockMvc.perform(post("/").param("nome", "X".repeat(31)).param("segnalino", "DINOSAURO"))
+				.andExpect(flash().attribute("messaggio", "Il nome può avere al massimo 30 caratteri."));
+		mockMvc.perform(post("/").param("nome", "Mario").param("segnalino", "DRAGO"))
+				.andExpect(flash().attribute("messaggio", "Segnalino non valido."));
+		mockMvc.perform(post("/").param("nome", "Mario"))
+				.andExpect(flash().attribute("messaggio", "Scegliere un segnalino."));
+		// nessuno dei tentativi falliti è stato registrato
+		assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM giocatore", Integer.class));
 	}
 
 	@Test
 	void partita_con_un_solo_giocatore_non_parte() throws Exception {
-		aggiungiGiocatore("Luca", 0);
+		aggiungiGiocatore("Luca", Segnalini.CANE);
 		mockMvc.perform(post("/avviaPartita"))
 				.andExpect(flash().attribute("messaggio", "Servono almeno 2 giocatori per iniziare la partita."));
 		mockMvc.perform(get("/stato")).andExpect(status().isNotFound());
@@ -154,15 +161,15 @@ class ApiPartitaIntegrationTest {
 
 	@Test
 	void segnalino_salvato_per_nome() throws Exception {
-		aggiungiGiocatore("Luca", 0);
+		aggiungiGiocatore("Luca", Segnalini.CANE);
 		assertEquals("CANE", jdbcTemplate.queryForObject("SELECT segnalino FROM giocatore", String.class));
 	}
 
 	@Test
 	void ordine_dei_turni_uguale_all_ordine_di_registrazione() throws Exception {
-		aggiungiGiocatore("Sara", 7);
-		aggiungiGiocatore("Luca", 0);
-		aggiungiGiocatore("Mario", 3);
+		aggiungiGiocatore("Sara", Segnalini.SCARPONE);
+		aggiungiGiocatore("Luca", Segnalini.CANE);
+		aggiungiGiocatore("Mario", Segnalini.MACCHINA);
 		mockMvc.perform(post("/avviaPartita")).andExpect(status().is3xxRedirection());
 
 		JsonNode giocatori = stato().get("giocatori");
@@ -174,7 +181,7 @@ class ApiPartitaIntegrationTest {
 	@Test
 	void giocatori_non_aggiungibili_a_partita_iniziata() throws Exception {
 		avviaPartitaConDueGiocatori();
-		mockMvc.perform(post("/").param("nome", "Anna").param("segnalino", "2"))
+		mockMvc.perform(post("/").param("nome", "Anna").param("segnalino", "GATTO"))
 				.andExpect(flash().attribute("messaggio",
 						"La partita è già iniziata: resettala per aggiungere nuovi giocatori."));
 		assertEquals(2, stato().get("giocatori").size());

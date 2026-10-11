@@ -199,17 +199,26 @@ La lobby usa form classici: `POST /` aggiunge un giocatore, `POST /rimuoviGiocat
 mvn verify
 ```
 
-- `PartitaTest`: regole del gioco con dadi e mazzi deterministici (doppi, prigione, affitti, aste, debiti, bancarotta...).
-- `MonopolyTest`: contenuto della scatola (caselle, contratti, carte, case, alberghi, dadi).
-- `ApiPartitaIntegrationTest`: l'API HTTP sul database H2, inclusi i conflitti di versione.
+| Livello | Test | Cosa verificano |
+|---|---|---|
+| Dominio | `PartitaTest` | Flusso di gioco con dadi e mazzi deterministici: doppi, prigione, affitti, aste, debiti, bancarotta, carte |
+| Dominio | `AstaTest`, `CalcolatoreAffittoTest`, `GestoreProprietaTest`, `BancaTest`, `MazzoTest` | Le singole regole, una classe alla volta |
+| Dominio | `TabelloneTest` | Contenuto della scatola: caselle, contratti, rendite, carte, gruppi |
+| Web | `ApiPartitaIntegrationTest` | API HTTP e lobby su H2: versioni (409), CSRF (403), console H2 chiusa, validazione dei form |
+| Web | `StatoPartitaViewTest`, `HomeFormTest`, `GiocatoreServiceTest` | Vista JSON, regole del form, vincolo sul segnalino |
 
-La CI di GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) esegue gli stessi test a ogni push.
+I test di dominio preparano le situazioni con `ScenarioPartita`, senza setter.
+`mvn verify` produce anche il report di copertura in `target/site/jacoco/index.html` e **fallisce se la
+copertura del package `domain` scende sotto il 90 % delle righe o l'80 % dei rami**.
+La CI di GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) esegue gli stessi controlli a ogni push.
 
 ## Limiti noti
 
 - Il server gestisce **una sola partita** alla volta, condivisa da chiunque apra il sito.
 - Non ci sono account: chi apre la pagina può muovere per il giocatore di turno (pensato per giocare insieme).
 - Con il profilo `dev` i dati sono in memoria e si perdono al riavvio.
+- Durante un'**asta** si può offrire solo fino ai contanti disponibili: chi non è di turno non può
+  ipotecare o vendere edifici per raccogliere denaro (il regolamento ufficiale lo permetterebbe).
 
 ## Fonti
 
