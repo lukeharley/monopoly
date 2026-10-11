@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.luca.monopoly.domain.giocatore.Giocatore;
 
 /**
  * Asta di una proprietà che il giocatore di turno ha rinunciato a comprare.

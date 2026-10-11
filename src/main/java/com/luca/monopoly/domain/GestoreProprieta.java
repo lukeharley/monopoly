@@ -2,9 +2,8 @@ package com.luca.monopoly.domain;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
-
-import com.luca.monopoly.domain.giocatore.Giocatore;
 
 /**
  * Regole su case, alberghi e ipoteche. Non verifica di chi sia il turno: lo fa
@@ -23,13 +22,31 @@ public class GestoreProprieta {
     }
 
     void costruisci(Giocatore giocatore, Casella casella) {
+        verificaCostruibile(giocatore, casella);
+
+        if (casella.getNumeroEdifici() == Casella.MASSIMO_CASE) {
+            // l'albergo prende il posto delle 4 case, che tornano alla banca
+            banca.prelevaAlbergo();
+            banca.restituisciCasette(Casella.MASSIMO_CASE);
+        } else {
+            banca.prelevaCasette(1);
+        }
+
+        giocatore.paga(casella.getCostoCasetta());
+        casella.aggiungiEdificio();
+        registro.accept(giocatore.getNome()
+                + (casella.haAlbergo() ? " costruisce un albergo su " : " costruisce una casa su ")
+                + casella.getTesto() + " per " + casella.getCostoCasetta() + "€.");
+    }
+
+    private void verificaCostruibile(Giocatore giocatore, Casella casella) {
         if (!casella.isTerreno()) {
             throw new MossaNonValidaException("Si può costruire solo sui terreni.");
         }
-        List<Casella> gruppo = tabellone.getCaselleDelColore(casella.getColore());
-        if (!tabellone.possiedeTuttoIlGruppo(giocatore, casella.getColore())) {
+        List<Casella> gruppo = tabellone.getCaselleDelGruppo(casella.getGruppo());
+        if (!tabellone.possiedeTuttoIlGruppo(giocatore, casella.getGruppo())) {
             throw new MossaNonValidaException(
-                    "Per costruire devi possedere tutti i terreni del gruppo " + casella.getColore() + ".");
+                    "Per costruire devi possedere tutti i terreni del gruppo " + casella.getGruppo().getNome() + ".");
         }
         if (gruppo.stream().anyMatch(Casella::isIpotecata)) {
             throw new MossaNonValidaException("Non puoi costruire: un terreno del gruppo è ipotecato.");
@@ -37,28 +54,13 @@ public class GestoreProprieta {
         if (casella.haAlbergo()) {
             throw new MossaNonValidaException("Su " + casella.getTesto() + " c'è già un albergo.");
         }
-        int numeroCasette = casella.getNumeroDiCasetteSullaCasella();
-        int minimoDelGruppo = gruppo.stream().mapToInt(Casella::getNumeroDiCasetteSullaCasella).min().orElse(0);
-        if (numeroCasette > minimoDelGruppo) {
+        if (casella.getNumeroEdifici() > minimoEdifici(gruppo)) {
             throw new MossaNonValidaException(
                     "Devi costruire in modo uniforme: prima aggiungi una casa sugli altri terreni del gruppo.");
         }
         if (giocatore.getPortafoglio() < casella.getCostoCasetta()) {
             throw new MossaNonValidaException("Non hai abbastanza denaro per costruire.");
         }
-
-        if (numeroCasette == 4) {
-            banca.prelevaAlbergo();
-            banca.restituisciCasette(4);
-        } else {
-            banca.prelevaCasette(1);
-        }
-
-        giocatore.paga(casella.getCostoCasetta());
-        casella.setNumeroDiCasetteSullaCasella(numeroCasette + 1);
-        registro.accept(giocatore.getNome()
-                + (casella.haAlbergo() ? " costruisce un albergo su " : " costruisce una casa su ")
-                + casella.getTesto() + " per " + casella.getCostoCasetta() + "€.");
     }
 
     /**
@@ -67,51 +69,53 @@ public class GestoreProprieta {
      * per sostituire un albergo, lo vende per intero.
      */
     void vendiEdificio(Giocatore giocatore, Casella casella, boolean venditaForzata) {
-        int numeroCasette = casella.getNumeroDiCasetteSullaCasella();
-        if (!casella.isTerreno() || numeroCasette == 0) {
+        if (!casella.isTerreno() || casella.getNumeroEdifici() == 0) {
             throw new MossaNonValidaException("Su " + casella.getTesto() + " non ci sono edifici da vendere.");
         }
-        int massimoDelGruppo = tabellone.getCaselleDelColore(casella.getColore()).stream()
-                .mapToInt(Casella::getNumeroDiCasetteSullaCasella).max().orElse(0);
-        if (!venditaForzata && numeroCasette < massimoDelGruppo) {
+        if (!venditaForzata
+                && casella.getNumeroEdifici() < massimoEdifici(tabellone.getCaselleDelGruppo(casella.getGruppo()))) {
             throw new MossaNonValidaException(
                     "Devi vendere in modo uniforme: prima vendi gli edifici sui terreni del gruppo che ne hanno di più.");
         }
 
-        int ricavo = casella.getCostoCasetta() / 2;
-        if (casella.haAlbergo()) {
-            if (banca.getCasetteDisponibili() >= 4) {
-                // l'albergo viene sostituito da 4 casette
-                banca.prelevaCasette(4);
-                casella.setNumeroDiCasetteSullaCasella(4);
-            } else if (venditaForzata) {
-                ricavo *= 5;
-                casella.setNumeroDiCasetteSullaCasella(0);
-            } else {
-                throw new MossaNonValidaException(
-                        "La banca non ha 4 casette per sostituire l'albergo: non puoi venderlo ora.");
-            }
-            banca.restituisciAlbergo();
-            registro.accept(giocatore.getNome() + " vende l'albergo su " + casella.getTesto() + " e incassa "
-                    + ricavo + "€.");
-        } else {
-            banca.restituisciCasette(1);
-            casella.setNumeroDiCasetteSullaCasella(numeroCasette - 1);
-            registro.accept(giocatore.getNome() + " vende una casa su " + casella.getTesto() + " e incassa "
-                    + ricavo + "€.");
-        }
+        boolean albergo = casella.haAlbergo();
+        int ricavo = albergo ? vendiAlbergo(casella, venditaForzata) : vendiCasa(casella);
         giocatore.incassa(ricavo);
+        registro.accept(giocatore.getNome() + (albergo ? " vende l'albergo su " : " vende una casa su ")
+                + casella.getTesto() + " e incassa " + ricavo + "€.");
+    }
+
+    private int vendiCasa(Casella casella) {
+        banca.restituisciCasette(1);
+        casella.rimuoviEdificio();
+        return casella.getRicavoVenditaEdificio();
+    }
+
+    /** @return il ricavo: un edificio se l'albergo torna 4 case, tutti e 5 se sparisce */
+    private int vendiAlbergo(Casella casella, boolean venditaForzata) {
+        if (banca.getCasetteDisponibili() >= Casella.MASSIMO_CASE) {
+            banca.prelevaCasette(Casella.MASSIMO_CASE);
+            banca.restituisciAlbergo();
+            casella.rimuoviEdificio();
+            return casella.getRicavoVenditaEdificio();
+        }
+        if (!venditaForzata) {
+            throw new MossaNonValidaException(
+                    "La banca non ha 4 casette per sostituire l'albergo: non puoi venderlo ora.");
+        }
+        banca.restituisciAlbergo();
+        casella.rimuoviTuttiGliEdifici();
+        return casella.getRicavoVenditaEdificio() * Casella.ALBERGO;
     }
 
     void ipoteca(Giocatore giocatore, Casella casella) {
         if (casella.isIpotecata()) {
             throw new MossaNonValidaException(casella.getTesto() + " è già ipotecata.");
         }
-        if (casella.isTerreno() && tabellone.getCaselleDelColore(casella.getColore()).stream()
-                .anyMatch(terreno -> terreno.getNumeroDiCasetteSullaCasella() > 0)) {
+        if (casella.isTerreno() && massimoEdifici(tabellone.getCaselleDelGruppo(casella.getGruppo())) > 0) {
             throw new MossaNonValidaException("Prima di ipotecare devi vendere gli edifici del gruppo.");
         }
-        casella.setIpotecata(true);
+        casella.ipoteca();
         giocatore.incassa(casella.getValoreIpotecario());
         registro.accept(giocatore.getNome() + " ipoteca " + casella.getTesto() + " e incassa "
                 + casella.getValoreIpotecario() + "€.");
@@ -125,20 +129,23 @@ public class GestoreProprieta {
             throw new MossaNonValidaException("Non hai abbastanza denaro per riscattare l'ipoteca.");
         }
         giocatore.paga(casella.getCostoRiscatto());
-        casella.setIpotecata(false);
+        casella.riscatta();
         registro.accept(giocatore.getNome() + " riscatta l'ipoteca su " + casella.getTesto() + " pagando "
                 + casella.getCostoRiscatto() + "€.");
     }
 
     /** Vende alla banca tutti gli edifici del giocatore (bancarotta). */
     void liquidaEdifici(Giocatore giocatore) {
-        Casella casella;
-        while ((casella = tabellone.getProprietaDi(giocatore).stream()
-                .filter(proprieta -> proprieta.getNumeroDiCasetteSullaCasella() > 0)
-                .max(Comparator.comparingInt(Casella::getNumeroDiCasetteSullaCasella))
-                .orElse(null)) != null) {
-            vendiEdificio(giocatore, casella, true);
+        Optional<Casella> conEdifici;
+        while ((conEdifici = terrenoConPiuEdifici(giocatore)).isPresent()) {
+            vendiEdificio(giocatore, conEdifici.get(), true);
         }
+    }
+
+    private Optional<Casella> terrenoConPiuEdifici(Giocatore giocatore) {
+        return tabellone.getProprietaDi(giocatore).stream()
+                .filter(proprieta -> proprieta.getNumeroEdifici() > 0)
+                .max(Comparator.comparingInt(Casella::getNumeroEdifici));
     }
 
     /**
@@ -148,12 +155,20 @@ public class GestoreProprieta {
     public int valoreLiquidabile(Giocatore giocatore) {
         int valore = giocatore.getPortafoglio();
         for (Casella casella : tabellone.getProprietaDi(giocatore)) {
-            valore += casella.getNumeroDiCasetteSullaCasella() * (casella.getCostoCasetta() / 2);
+            valore += casella.getNumeroEdifici() * casella.getRicavoVenditaEdificio();
             if (!casella.isIpotecata()) {
                 valore += casella.getValoreIpotecario();
             }
         }
         return valore;
+    }
+
+    private static int minimoEdifici(List<Casella> gruppo) {
+        return gruppo.stream().mapToInt(Casella::getNumeroEdifici).min().orElse(0);
+    }
+
+    private static int massimoEdifici(List<Casella> gruppo) {
+        return gruppo.stream().mapToInt(Casella::getNumeroEdifici).max().orElse(0);
     }
 
 }

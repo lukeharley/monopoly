@@ -1,13 +1,11 @@
-package com.luca.monopoly;
-
-import com.luca.monopoly.domain.*;
-import com.luca.monopoly.domain.giocatore.Giocatore;
+package com.luca.monopoly.domain;
 
 import org.junit.jupiter.api.*;
 
 import java.util.List;
 import java.util.Random;
 
+import static com.luca.monopoly.domain.ScenarioPartita.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -23,8 +21,8 @@ public class PartitaTest {
 
 	@BeforeEach
 	void setup() {
-		luca = new Giocatore("Luca", Segnalini.CANE, 1500, 0);
-		mario = new Giocatore("Mario", Segnalini.DINOSAURO, 1500, 0);
+		luca = new Giocatore("Luca", Segnalini.CANE);
+		mario = new Giocatore("Mario", Segnalini.DINOSAURO);
 		partita = new Partita(List.of(luca, mario), new Random(0), false);
 		tabellone = partita.getTabellone();
 	}
@@ -82,8 +80,8 @@ public class PartitaTest {
 	void affitto_doppio_con_monopolio_e_con_case() {
 		Casella vicoloCorto = tabellone.getCasella(1);
 		Casella vicoloStretto = tabellone.getCasella(3);
-		vicoloCorto.setProprietario(luca);
-		vicoloStretto.setProprietario(luca);
+		vicoloCorto.assegnaA(luca);
+		vicoloStretto.assegnaA(luca);
 
 		assertEquals(8, partita.calcolaAffitto(vicoloStretto));
 
@@ -158,7 +156,7 @@ public class PartitaTest {
 
 	@Test
 	void passaggio_dal_via() {
-		luca.setPosizione(38);
+		luca.spostaA(38);
 		partita.lanciaDadi(1, 3); // Probabilità (posizione 2): "Ritornate al Vicolo Corto"
 		assertEquals(1, luca.getPosizione());
 		assertEquals(1700, luca.getPortafoglio());
@@ -166,7 +164,7 @@ public class PartitaTest {
 
 	@Test
 	void casella_vai_in_prigione() {
-		luca.setPosizione(24);
+		luca.spostaA(24);
 		partita.lanciaDadi(2, 4);
 		assertTrue(luca.isInPrigione());
 		assertEquals(10, luca.getPosizione());
@@ -175,8 +173,7 @@ public class PartitaTest {
 
 	@Test
 	void uscita_di_prigione_pagando_la_multa() {
-		luca.setInPrigione(true);
-		luca.setPosizione(10);
+		inPrigione(luca, 0);
 		partita.pagaUscitaDiPrigione();
 		assertFalse(luca.isInPrigione());
 		assertEquals(1500 - Partita.MULTA_PRIGIONE, luca.getPortafoglio());
@@ -187,8 +184,7 @@ public class PartitaTest {
 
 	@Test
 	void uscita_di_prigione_con_un_doppio() {
-		luca.setInPrigione(true);
-		luca.setPosizione(10);
+		inPrigione(luca, 0);
 		partita.lanciaDadi(3, 3);
 		assertFalse(luca.isInPrigione());
 		assertEquals(16, luca.getPosizione());
@@ -199,9 +195,8 @@ public class PartitaTest {
 
 	@Test
 	void dopo_tre_turni_in_prigione_si_paga_e_si_esce() {
-		luca.setInPrigione(true);
-		luca.setPosizione(10);
-		mario.setPosizione(20);
+		inPrigione(luca, 0);
+		mario.spostaA(20);
 
 		for (int tentativo = 1; tentativo <= 2; tentativo++) {
 			partita.lanciaDadi(1, 2);
@@ -231,34 +226,33 @@ public class PartitaTest {
 		// la sesta carta Probabilità (indice 5) è "Uscite gratis di prigione":
 		// i giocatori pescano a turno, quindi tocca a Mario
 		for (int carta = 0; carta < 6; carta++) {
-			partita.getGiocatoreCorrente().setPosizione(39);
+			partita.getGiocatoreCorrente().spostaA(39);
 			partita.lanciaDadi(1, 2); // Probabilità (posizione 2)
 			if (partita.getFase() == FasePartita.DECISIONE_ACQUISTO) {
 				rinunciaSenzaOfferte();
 			}
 			partita.fineTurno();
 		}
-		assertEquals(0, luca.getCarteUscitaDiPrigione().size());
-		assertEquals(1, mario.getCarteUscitaDiPrigione().size());
+		assertEquals(0, luca.getNumeroCarteUscitaDiPrigione());
+		assertEquals(1, mario.getNumeroCarteUscitaDiPrigione());
 
 		// Mario finisce in prigione e usa la carta
 		partita.lanciaDadi(1, 2);
 		rinunciaSenzaOfferte();
 		partita.fineTurno();
-		mario.setInPrigione(true);
-		mario.setPosizione(10);
+		inPrigione(mario, 0);
 		partita.usaCartaUscitaDiPrigione();
 		assertFalse(mario.isInPrigione());
-		assertEquals(0, mario.getCarteUscitaDiPrigione().size());
+		assertEquals(0, mario.getNumeroCarteUscitaDiPrigione());
 	}
 
 	@Test
 	void stazioni_affitto_cresce_con_il_numero_di_stazioni() {
 		Casella stazioneSud = tabellone.getCasella(5);
-		stazioneSud.setProprietario(mario);
+		stazioneSud.assegnaA(mario);
 		assertEquals(25, partita.calcolaAffitto(stazioneSud));
-		tabellone.getCasella(15).setProprietario(mario);
-		tabellone.getCasella(25).setProprietario(mario);
+		tabellone.getCasella(15).assegnaA(mario);
+		tabellone.getCasella(25).assegnaA(mario);
 		assertEquals(100, partita.calcolaAffitto(stazioneSud));
 
 		partita.lanciaDadi(2, 3);
@@ -268,17 +262,17 @@ public class PartitaTest {
 
 	@Test
 	void societa_affitto_proporzionale_ai_dadi() {
-		tabellone.getCasella(12).setProprietario(mario);
-		luca.setPosizione(7);
+		tabellone.getCasella(12).assegnaA(mario);
+		luca.spostaA(7);
 		partita.lanciaDadi(2, 3);
 		assertEquals(1500 - 20, luca.getPortafoglio());
 	}
 
 	@Test
 	void costruzione_uniforme_e_albergo() {
-		tabellone.getCasella(6).setProprietario(luca);
-		tabellone.getCasella(8).setProprietario(luca);
-		tabellone.getCasella(9).setProprietario(luca);
+		tabellone.getCasella(6).assegnaA(luca);
+		tabellone.getCasella(8).assegnaA(luca);
+		tabellone.getCasella(9).assegnaA(luca);
 
 		partita.costruisciCasetta(6);
 		assertThrows(MossaNonValidaException.class, () -> partita.costruisciCasetta(6));
@@ -297,13 +291,13 @@ public class PartitaTest {
 		assertEquals(9, partita.getAlberghiDisponibili());
 
 		partita.vendiCasetta(9);
-		assertEquals(4, tabellone.getCasella(9).getNumeroDiCasetteSullaCasella());
+		assertEquals(4, tabellone.getCasella(9).getNumeroEdifici());
 		assertEquals(1500 - 15 * 50 + 25, luca.getPortafoglio());
 	}
 
 	@Test
 	void non_si_costruisce_senza_monopolio() {
-		tabellone.getCasella(6).setProprietario(luca);
+		tabellone.getCasella(6).assegnaA(luca);
 		assertThrows(MossaNonValidaException.class, () -> partita.costruisciCasetta(6));
 		assertThrows(MossaNonValidaException.class, () -> partita.costruisciCasetta(8));
 	}
@@ -311,7 +305,7 @@ public class PartitaTest {
 	@Test
 	void ipoteca_e_riscatto() {
 		Casella vicoloStretto = tabellone.getCasella(3);
-		vicoloStretto.setProprietario(luca);
+		vicoloStretto.assegnaA(luca);
 
 		partita.ipoteca(3);
 		assertTrue(vicoloStretto.isIpotecata());
@@ -326,13 +320,13 @@ public class PartitaTest {
 	@Test
 	void bancarotta_e_vittoria() {
 		Casella parco = tabellone.getCasella(39);
-		parco.setProprietario(mario);
-		parco.setNumeroDiCasetteSullaCasella(5);
+		parco.assegnaA(mario);
+		conEdifici(parco, Casella.ALBERGO);
 		Casella vicoloCorto = tabellone.getCasella(1);
-		vicoloCorto.setProprietario(luca);
+		vicoloCorto.assegnaA(luca);
 
-		luca.setPortafoglio(100);
-		luca.setPosizione(35);
+		conContanti(luca, 100);
+		luca.spostaA(35);
 		partita.lanciaDadi(1, 3);
 
 		assertTrue(luca.isInBancarotta());
@@ -344,10 +338,10 @@ public class PartitaTest {
 
 	@Test
 	void bancarotta_con_tre_giocatori_passa_il_turno() {
-		Giocatore anna = new Giocatore("Anna", Segnalini.GATTO, 1500, 0);
+		Giocatore anna = new Giocatore("Anna", Segnalini.GATTO);
 		partita = new Partita(List.of(luca, mario, anna), new Random(0), false);
 
-		luca.setPortafoglio(50);
+		conContanti(luca, 50);
 		partita.lanciaDadi(1, 3); // Tassa Patrimoniale: 200 euro
 
 		assertTrue(luca.isInBancarotta());
@@ -367,11 +361,11 @@ public class PartitaTest {
 
 	@Test
 	void debito_saldato_vendendo_edifici_e_ipotecando() {
-		tabellone.getCasella(1).setProprietario(luca);
-		tabellone.getCasella(3).setProprietario(luca);
+		tabellone.getCasella(1).assegnaA(luca);
+		tabellone.getCasella(3).assegnaA(luca);
 		partita.costruisciCasetta(1);
 		partita.costruisciCasetta(3);
-		luca.setPortafoglio(100);
+		conContanti(luca, 100);
 
 		partita.lanciaDadi(1, 3); // Tassa Patrimoniale: 200 euro
 
@@ -396,10 +390,10 @@ public class PartitaTest {
 
 	@Test
 	void debito_per_affitto_pagato_al_proprietario() {
-		tabellone.getCasella(3).setProprietario(mario);
-		tabellone.getCasella(1).setProprietario(mario);
-		tabellone.getCasella(39).setProprietario(luca);
-		luca.setPortafoglio(2);
+		tabellone.getCasella(3).assegnaA(mario);
+		tabellone.getCasella(1).assegnaA(mario);
+		tabellone.getCasella(39).assegnaA(luca);
+		conContanti(luca, 2);
 
 		partita.lanciaDadi(1, 2); // Vicolo Stretto, affitto doppio: 8 euro
 		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
@@ -413,11 +407,11 @@ public class PartitaTest {
 
 	@Test
 	void bancarotta_dichiarata_durante_il_saldo_del_debito() {
-		tabellone.getCasella(1).setProprietario(luca);
-		tabellone.getCasella(3).setProprietario(luca);
+		tabellone.getCasella(1).assegnaA(luca);
+		tabellone.getCasella(3).assegnaA(luca);
 		partita.costruisciCasetta(1);
 		// 150 contanti + 25 (casa) + 60 (ipoteche) bastano per i 200 della tassa
-		luca.setPortafoglio(150);
+		conContanti(luca, 150);
 
 		partita.lanciaDadi(1, 3);
 		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
@@ -427,17 +421,15 @@ public class PartitaTest {
 		// gli edifici tornano alla banca e le proprietà sono di nuovo libere
 		assertEquals(32, partita.getCasetteDisponibili());
 		assertNull(tabellone.getCasella(1).getProprietario());
-		assertEquals(0, tabellone.getCasella(1).getNumeroDiCasetteSullaCasella());
+		assertEquals(0, tabellone.getCasella(1).getNumeroEdifici());
 		assertEquals(mario, partita.getVincitore());
 	}
 
 	@Test
 	void multa_di_prigione_pagata_dopo_aver_ipotecato() {
-		tabellone.getCasella(39).setProprietario(luca);
-		luca.setInPrigione(true);
-		luca.setTurniInPrigione(2);
-		luca.setPosizione(10);
-		luca.setPortafoglio(50);
+		tabellone.getCasella(39).assegnaA(luca);
+		inPrigione(luca, 2);
+		conContanti(luca, 50);
 
 		partita.lanciaDadi(1, 2); // terzo tentativo fallito: multa di 125 euro
 		assertEquals(FasePartita.SALDO_DEBITO, partita.getFase());
@@ -453,7 +445,7 @@ public class PartitaTest {
 
 	@Test
 	void gestione_proprieta_vietata_durante_l_asta() {
-		tabellone.getCasella(39).setProprietario(luca);
+		tabellone.getCasella(39).assegnaA(luca);
 		partita.lanciaDadi(1, 2);
 		partita.rifiutaAcquisto();
 		assertThrows(MossaNonValidaException.class, () -> partita.ipoteca(39));
@@ -466,11 +458,32 @@ public class PartitaTest {
 
 	@Test
 	void termina_partita_vince_il_patrimonio_piu_alto() {
-		tabellone.getCasella(39).setProprietario(mario);
+		tabellone.getCasella(39).assegnaA(mario);
 		partita.terminaPartita();
 		assertEquals(mario, partita.getVincitore());
 		assertEquals(FasePartita.TERMINATA, partita.getFase());
 		assertThrows(MossaNonValidaException.class, () -> partita.lanciaDadi(1, 2));
 	}
 
+	@Test
+	void terminare_durante_asta_o_debito_lo_annulla_e_lo_registra() {
+		partita.lanciaDadi(1, 2);
+		partita.rifiutaAcquisto();
+		partita.offri(30);
+
+		partita.terminaPartita();
+
+		assertNull(partita.getAsta());
+		assertNull(tabellone.getCasella(3).getProprietario());
+		assertTrue(partita.getEventi().contains("L'asta per Vicolo Stretto è annullata."));
+	}
+
+	@Test
+	void giocatore_in_prigione_sempre_sulla_casella_della_prigione() {
+		luca.spostaA(25);
+		luca.entraInPrigione();
+		assertEquals(Tabellone.POSIZIONE_PRIGIONE, luca.getPosizione());
+		assertEquals(0, luca.getTurniInPrigione());
+		assertThrows(MossaNonValidaException.class, () -> luca.usaCartaUscitaDiPrigione());
+	}
 }

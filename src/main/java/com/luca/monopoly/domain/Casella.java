@@ -1,31 +1,67 @@
 package com.luca.monopoly.domain;
 
-import com.luca.monopoly.domain.giocatore.Giocatore;
-
+/**
+ * Una delle 40 caselle del tabellone. Per le proprietà conserva anche lo stato
+ * di gioco: proprietario, edifici e ipoteca, modificabili solo dal dominio.
+ */
 public class Casella {
+
+	/** Dopo 4 case si costruisce l'albergo, che conta come quinto edificio. */
+	public static final int MASSIMO_CASE = 4;
+	public static final int ALBERGO = MASSIMO_CASE + 1;
+
+	private static final int PERCENTUALE_IPOTECA = 50;
+	private static final int INTERESSE_RISCATTO_PERCENTO = 10;
+	private static final int PERCENTUALE_RIVENDITA_EDIFICIO = 50;
+
+	private final int posizione;
 	private final String testo;
 	private final TipoCasella tipo;
-	private final String colore;
-	/*
-	 * Per terreni, stazioni e società è il prezzo di acquisto; per le caselle di
-	 * tipo TASSA è l'importo da pagare alla banca.
-	 */
-	private final int costoProprieta;
+	private final GruppoColore gruppo;
+	private final int prezzo;
 	private final int costoCasetta;
-	private int numeroDiCasetteSullaCasella;
+	private final int importoTassa;
+	private final Contratto contratto;
+
+	private int numeroEdifici;
 	private Giocatore proprietario;
 	private boolean ipotecata;
 
-	public Casella(String testo, TipoCasella tipo, String colore, int costoProprieta, int costoCasetta) {
+	private Casella(int posizione, String testo, TipoCasella tipo, GruppoColore gruppo, int prezzo, int costoCasetta,
+			int importoTassa, Contratto contratto) {
+		this.posizione = posizione;
 		this.testo = testo;
 		this.tipo = tipo;
-		this.colore = colore;
-		this.costoProprieta = costoProprieta;
+		this.gruppo = gruppo;
+		this.prezzo = prezzo;
 		this.costoCasetta = costoCasetta;
+		this.importoTassa = importoTassa;
+		this.contratto = contratto;
 	}
 
-	public Casella(String testo, TipoCasella tipo) {
-		this(testo, tipo, null, 0, 0);
+	static Casella speciale(int posizione, String testo, TipoCasella tipo) {
+		return new Casella(posizione, testo, tipo, null, 0, 0, 0, null);
+	}
+
+	static Casella tassa(int posizione, String testo, int importo) {
+		return new Casella(posizione, testo, TipoCasella.TASSA, null, 0, 0, importo, null);
+	}
+
+	static Casella terreno(int posizione, String testo, GruppoColore gruppo, int prezzo, int costoCasetta,
+			Contratto contratto) {
+		return new Casella(posizione, testo, TipoCasella.TERRENO, gruppo, prezzo, costoCasetta, 0, contratto);
+	}
+
+	static Casella proprieta(int posizione, String testo, TipoCasella tipo, int prezzo, Contratto contratto) {
+		return new Casella(posizione, testo, tipo, null, prezzo, 0, 0, contratto);
+	}
+
+	// ---------------------------------------------------------------------
+	// Lettura
+	// ---------------------------------------------------------------------
+
+	public int getPosizione() {
+		return posizione;
 	}
 
 	public String getTesto() {
@@ -44,54 +80,94 @@ public class Casella {
 		return tipo.isAcquistabile();
 	}
 
-	public String getColore() {
-		return colore;
+	/** Solo per i terreni, altrimenti null. */
+	public GruppoColore getGruppo() {
+		return gruppo;
 	}
 
-	public int getCostoProprieta() {
-		return costoProprieta;
+	/** Prezzo di acquisto; 0 per le caselle che non si possono comprare. */
+	public int getPrezzo() {
+		return prezzo;
 	}
 
 	public int getCostoCasetta() {
 		return costoCasetta;
 	}
 
-	public int getNumeroDiCasetteSullaCasella() {
-		return numeroDiCasetteSullaCasella;
+	/** Solo per le caselle di tipo TASSA, altrimenti 0. */
+	public int getImportoTassa() {
+		return importoTassa;
 	}
 
-	public void setNumeroDiCasetteSullaCasella(int numeroDiCasetteSullaCasella) {
-		this.numeroDiCasetteSullaCasella = numeroDiCasetteSullaCasella;
+	/** Solo per le proprietà, altrimenti null. */
+	public Contratto getContratto() {
+		return contratto;
 	}
 
-	/** 5 casette equivalgono a un albergo. */
+	public int getNumeroEdifici() {
+		return numeroEdifici;
+	}
+
 	public boolean haAlbergo() {
-		return numeroDiCasetteSullaCasella == 5;
+		return numeroEdifici == ALBERGO;
 	}
 
 	public Giocatore getProprietario() {
 		return proprietario;
 	}
 
-	public void setProprietario(Giocatore proprietario) {
-		this.proprietario = proprietario;
-	}
-
 	public boolean isIpotecata() {
 		return ipotecata;
 	}
 
-	public void setIpotecata(boolean ipotecata) {
-		this.ipotecata = ipotecata;
-	}
-
 	public int getValoreIpotecario() {
-		return costoProprieta / 2;
+		return prezzo * PERCENTUALE_IPOTECA / 100;
 	}
 
-	/** Valore dell'ipoteca + 10% di interessi, arrotondato per eccesso. */
+	/** Valore dell'ipoteca più gli interessi, arrotondato per eccesso. */
 	public int getCostoRiscatto() {
-		return (getValoreIpotecario() * 11 + 9) / 10;
+		return (getValoreIpotecario() * (100 + INTERESSE_RISCATTO_PERCENTO) + 99) / 100;
+	}
+
+	/** Quanto paga la banca per ogni edificio rivenduto. */
+	public int getRicavoVenditaEdificio() {
+		return costoCasetta * PERCENTUALE_RIVENDITA_EDIFICIO / 100;
+	}
+
+	// ---------------------------------------------------------------------
+	// Modifica (solo dal dominio)
+	// ---------------------------------------------------------------------
+
+	void assegnaA(Giocatore nuovoProprietario) {
+		this.proprietario = nuovoProprietario;
+	}
+
+	/** Torna libera: senza proprietario, senza ipoteca e senza edifici. */
+	void restituisciAllaBanca() {
+		proprietario = null;
+		ipotecata = false;
+		numeroEdifici = 0;
+	}
+
+	void aggiungiEdificio() {
+		numeroEdifici++;
+	}
+
+	/** Togliendo l'albergo restano le 4 case su cui era costruito. */
+	void rimuoviEdificio() {
+		numeroEdifici--;
+	}
+
+	void rimuoviTuttiGliEdifici() {
+		numeroEdifici = 0;
+	}
+
+	void ipoteca() {
+		ipotecata = true;
+	}
+
+	void riscatta() {
+		ipotecata = false;
 	}
 
 }

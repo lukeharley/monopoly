@@ -5,11 +5,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import com.luca.monopoly.domain.giocatore.Giocatore;
 
 /**
  * Motore di gioco: gestisce i turni, il lancio dei dadi e ciò che accade quando
@@ -61,7 +60,8 @@ public class Partita {
 		this(giocatori, new Random(), true);
 	}
 
-	public Partita(List<Giocatore> giocatori, Random random, boolean mescolaMazzi) {
+	/** Con un {@link Random} prestabilito e i mazzi non mescolati la partita è riproducibile (test). */
+	Partita(List<Giocatore> giocatori, Random random, boolean mescolaMazzi) {
 		if (giocatori.size() < 2) {
 			throw new MossaNonValidaException("Servono almeno 2 giocatori per iniziare la partita.");
 		}
@@ -82,11 +82,11 @@ public class Partita {
 		lanciaDadi(dadi.get(0).lancia(random), dadi.get(1).lancia(random));
 	}
 
-	/** Lancio con risultato prestabilito: usato dai test e da {@link #lanciaDadi()}. */
-	public void lanciaDadi(int risultatoDado1, int risultatoDado2) {
+	/** Lancio con risultato prestabilito: usato da {@link #lanciaDadi()} e dai test. */
+	void lanciaDadi(int risultatoDado1, int risultatoDado2) {
 		verificaFase(FasePartita.LANCIO_DADI, "Non è il momento di lanciare i dadi.");
-		if (risultatoDado1 < 1 || risultatoDado1 > 6 || risultatoDado2 < 1 || risultatoDado2 > 6) {
-			throw new IllegalArgumentException("Ogni dado vale da 1 a 6.");
+		if (!isFacciaValida(risultatoDado1) || !isFacciaValida(risultatoDado2)) {
+			throw new IllegalArgumentException("Ogni dado vale da 1 a " + Dado.NUMERO_FACCE + ".");
 		}
 
 		Giocatore giocatore = getGiocatoreCorrente();
@@ -119,16 +119,19 @@ public class Partita {
 		muoviERisolvi(giocatore, risultatoDadi);
 	}
 
+	private static boolean isFacciaValida(int faccia) {
+		return faccia >= 1 && faccia <= Dado.NUMERO_FACCE;
+	}
+
 	private void lancioInPrigione(Giocatore giocatore, boolean doppio, int risultatoDadi) {
 		if (doppio) {
 			registra(giocatore.getNome() + " ha fatto un doppio ed esce di prigione.");
-			esciDiPrigione(giocatore);
+			giocatore.esciDiPrigione();
 			muoviERisolvi(giocatore, risultatoDadi);
 			return;
 		}
 
-		giocatore.setTurniInPrigione(giocatore.getTurniInPrigione() + 1);
-		if (giocatore.getTurniInPrigione() < MAX_TURNI_IN_PRIGIONE) {
+		if (giocatore.registraTurnoInPrigione() < MAX_TURNI_IN_PRIGIONE) {
 			registra(giocatore.getNome() + " resta in prigione.");
 			fase = FasePartita.FINE_TURNO;
 			return;
@@ -137,8 +140,8 @@ public class Partita {
 		registra(giocatore.getNome() + " è al terzo turno in prigione: deve pagare " + MULTA_PRIGIONE
 				+ "€ di multa per uscire.");
 		fase = FasePartita.MOVIMENTO;
-		if (pagamento(giocatore, null, MULTA_PRIGIONE, risultatoDadi)) {
-			esciDiPrigione(giocatore);
+		if (pagamento(giocatore, Debito.multaDiPrigione(MULTA_PRIGIONE, risultatoDadi))) {
+			giocatore.esciDiPrigione();
 			muoviERisolvi(giocatore, risultatoDadi);
 		}
 	}
@@ -148,15 +151,14 @@ public class Partita {
 		Giocatore giocatore = getGiocatoreCorrente();
 		Casella casella = tabellone.getCasella(giocatore.getPosizione());
 
-		if (giocatore.getPortafoglio() < casella.getCostoProprieta()) {
+		if (giocatore.getPortafoglio() < casella.getPrezzo()) {
 			throw new MossaNonValidaException("Non hai abbastanza denaro per comprare " + casella.getTesto()
 					+ ": puoi ipotecare altre proprietà o rinunciare all'acquisto.");
 		}
 
-		giocatore.paga(casella.getCostoProprieta());
-		casella.setProprietario(giocatore);
-		registra(giocatore.getNome() + " compra " + casella.getTesto() + " per " + casella.getCostoProprieta()
-				+ "€.");
+		giocatore.paga(casella.getPrezzo());
+		casella.assegnaA(giocatore);
+		registra(giocatore.getNome() + " compra " + casella.getTesto() + " per " + casella.getPrezzo() + "€.");
 		concludiAzione();
 	}
 
@@ -205,7 +207,7 @@ public class Partita {
 			registra("Nessuna offerta: " + casella.getTesto() + " resta alla banca.");
 		} else {
 			aggiudicatario.paga(asta.getOffertaMassima());
-			casella.setProprietario(aggiudicatario);
+			casella.assegnaA(aggiudicatario);
 			registra(aggiudicatario.getNome() + " si aggiudica " + casella.getTesto() + " per "
 					+ asta.getOffertaMassima() + "€.");
 		}
@@ -226,10 +228,11 @@ public class Partita {
 		trasferisci(giocatore, saldato.creditore(), saldato.importo());
 		registra(giocatore.getNome() + " salda il debito di " + saldato.importo() + "€.");
 
-		if (saldato.passiDopoIlPagamento() > 0) {
+		OptionalInt movimento = saldato.movimentoDopoIlPagamento();
+		if (movimento.isPresent()) {
 			// era la multa per uscire di prigione: il segnalino ora si muove
-			esciDiPrigione(giocatore);
-			muoviERisolvi(giocatore, saldato.passiDopoIlPagamento());
+			giocatore.esciDiPrigione();
+			muoviERisolvi(giocatore, movimento.getAsInt());
 		} else {
 			concludiAzione();
 		}
@@ -253,17 +256,14 @@ public class Partita {
 			throw new MossaNonValidaException("Non hai abbastanza denaro per pagare la multa.");
 		}
 		giocatore.paga(MULTA_PRIGIONE);
-		esciDiPrigione(giocatore);
+		giocatore.esciDiPrigione();
 		registra(giocatore.getNome() + " paga " + MULTA_PRIGIONE + "€ ed esce di prigione.");
 	}
 
 	public void usaCartaUscitaDiPrigione() {
 		Giocatore giocatore = verificaInPrigionePrimaDelLancio();
-		if (giocatore.getCarteUscitaDiPrigione().isEmpty()) {
-			throw new MossaNonValidaException("Non possiedi carte \"Uscite gratis di prigione\".");
-		}
-		restituisciCartaAlMazzo(giocatore.getCarteUscitaDiPrigione().remove(0));
-		esciDiPrigione(giocatore);
+		restituisciCartaAlMazzo(giocatore.usaCartaUscitaDiPrigione());
+		giocatore.esciDiPrigione();
 		registra(giocatore.getNome() + " usa la carta \"Uscite gratis di prigione\".");
 	}
 
@@ -275,12 +275,23 @@ public class Partita {
 		if (fase == FasePartita.TERMINATA) {
 			throw new MossaNonValidaException("La partita è già terminata.");
 		}
-		asta = null;
-		debito = null;
+		annullaAstaEDebitoInCorso();
 		vincitore = getGiocatoriAttivi().stream().max(Comparator.comparingInt(this::calcolaPatrimonio)).get();
 		fase = FasePartita.TERMINATA;
 		registra("Partita terminata: vince " + vincitore.getNome() + " con un patrimonio di "
 				+ calcolaPatrimonio(vincitore) + "€!");
+	}
+
+	private void annullaAstaEDebitoInCorso() {
+		if (asta != null) {
+			registra("L'asta per " + asta.getCasella().getTesto() + " è annullata.");
+			asta = null;
+		}
+		if (debito != null) {
+			registra("Il debito di " + debito.importo() + "€ di " + getGiocatoreCorrente().getNome()
+					+ " è annullato.");
+			debito = null;
+		}
 	}
 
 	// ---------------------------------------------------------------------
@@ -356,7 +367,7 @@ public class Partita {
 	}
 
 	private void spostaSenzaPassareDalVia(Giocatore giocatore, int nuovaPosizione) {
-		giocatore.setPosizione(nuovaPosizione);
+		giocatore.spostaA(nuovaPosizione);
 		String casella = tabellone.getCasella(nuovaPosizione).getTesto();
 		registra(giocatore.getNome() + " arriva su " + casella + (casella.endsWith("!") ? "" : "."));
 		risolviCasella(giocatore);
@@ -372,8 +383,8 @@ public class Partita {
 				break;
 			case TASSA:
 				registra(giocatore.getNome() + " deve pagare " + casella.getTesto() + ": "
-						+ casella.getCostoProprieta() + "€.");
-				pagamento(giocatore, null, casella.getCostoProprieta(), 0);
+						+ casella.getImportoTassa() + "€.");
+				pagamento(giocatore, Debito.versoLaBanca(casella.getImportoTassa()));
 				break;
 			case IMPREVISTI:
 				applicaCarta(giocatore, mazzoImprevisti.pesca());
@@ -397,7 +408,7 @@ public class Partita {
 
 		if (proprietario == null) {
 			fase = FasePartita.DECISIONE_ACQUISTO;
-			registra(casella.getTesto() + " è libera: costa " + casella.getCostoProprieta() + "€.");
+			registra(casella.getTesto() + " è libera: costa " + casella.getPrezzo() + "€.");
 		} else if (proprietario == giocatore) {
 			registra(casella.getTesto() + " è già di " + giocatore.getNome() + ".");
 		} else if (casella.isIpotecata()) {
@@ -405,7 +416,7 @@ public class Partita {
 		} else {
 			int affitto = calcolaAffitto(casella);
 			registra(giocatore.getNome() + " deve " + affitto + "€ di affitto a " + proprietario.getNome() + ".");
-			pagamento(giocatore, proprietario, affitto, 0);
+			pagamento(giocatore, Debito.verso(proprietario, affitto));
 		}
 	}
 
@@ -420,7 +431,7 @@ public class Partita {
 				giocatore.incassa(carta.getValore());
 				break;
 			case PAGA:
-				pagamento(giocatore, null, carta.getValore(), 0);
+				pagamento(giocatore, Debito.versoLaBanca(carta.getValore()));
 				break;
 			case VAI_A:
 				int passi = Math.floorMod(carta.getValore() - giocatore.getPosizione(), Tabellone.NUMERO_CASELLE);
@@ -437,7 +448,7 @@ public class Partita {
 				vaiInPrigione(giocatore);
 				break;
 			case ESCI_GRATIS_DI_PRIGIONE:
-				giocatore.getCarteUscitaDiPrigione().add(carta);
+				giocatore.riceviCartaUscitaDiPrigione(carta);
 				break;
 			case RIPARAZIONI:
 				pagaRiparazioni(giocatore, carta);
@@ -452,7 +463,7 @@ public class Partita {
 			if (casella.haAlbergo()) {
 				alberghi++;
 			} else {
-				casette += casella.getNumeroDiCasetteSullaCasella();
+				casette += casella.getNumeroEdifici();
 			}
 		}
 		int importo = casette * carta.getValore() + alberghi * carta.getValoreAlbergo();
@@ -462,7 +473,7 @@ public class Partita {
 		}
 		registra(giocatore.getNome() + " deve " + importo + "€ per " + casette + " case e " + alberghi
 				+ " alberghi.");
-		pagamento(giocatore, null, importo, 0);
+		pagamento(giocatore, Debito.versoLaBanca(importo));
 	}
 
 	// ---------------------------------------------------------------------
@@ -476,17 +487,18 @@ public class Partita {
 	 *
 	 * @return true se il pagamento è avvenuto subito
 	 */
-	private boolean pagamento(Giocatore debitore, Giocatore creditore, int importo, int passiDopoIlPagamento) {
+	private boolean pagamento(Giocatore debitore, Debito dovuto) {
+		int importo = dovuto.importo();
 		if (debitore.getPortafoglio() >= importo) {
-			trasferisci(debitore, creditore, importo);
+			trasferisci(debitore, dovuto.creditore(), importo);
 			return true;
 		}
 		if (gestoreProprieta.valoreLiquidabile(debitore) < importo) {
 			registra(debitore.getNome() + " non può pagare " + importo + "€ nemmeno vendendo tutto.");
-			bancarotta(debitore, creditore);
+			bancarotta(debitore, dovuto.creditore());
 			return false;
 		}
-		debito = new Debito(creditore, importo, passiDopoIlPagamento);
+		debito = dovuto;
 		fase = FasePartita.SALDO_DEBITO;
 		registra(debitore.getNome() + " ha solo " + debitore.getPortafoglio() + "€ contanti: deve vendere edifici o "
 				+ "ipotecare proprietà per pagare " + importo + "€.");
@@ -506,31 +518,28 @@ public class Partita {
 	 */
 	private void bancarotta(Giocatore giocatore, Giocatore creditore) {
 		gestoreProprieta.liquidaEdifici(giocatore);
-		giocatore.setInBancarotta(true);
+		giocatore.esceDalGioco();
 		registra(giocatore.getNome() + " è in bancarotta ed esce dal gioco!");
 
 		for (Casella casella : tabellone.getProprietaDi(giocatore)) {
 			if (creditore != null) {
-				casella.setProprietario(creditore);
+				casella.assegnaA(creditore);
 			} else {
-				casella.setProprietario(null);
-				casella.setIpotecata(false);
+				casella.restituisciAllaBanca();
 			}
 		}
-		for (Carta carta : giocatore.getCarteUscitaDiPrigione()) {
+		for (Carta carta : giocatore.cediCarteUscitaDiPrigione()) {
 			if (creditore != null) {
-				creditore.getCarteUscitaDiPrigione().add(carta);
+				creditore.riceviCartaUscitaDiPrigione(carta);
 			} else {
 				restituisciCartaAlMazzo(carta);
 			}
 		}
-		giocatore.getCarteUscitaDiPrigione().clear();
+		int denaro = giocatore.cediTuttoIlDenaro();
 		if (creditore != null) {
-			creditore.incassa(giocatore.getPortafoglio());
+			creditore.incassa(denaro);
 			registra("Tutti i beni di " + giocatore.getNome() + " passano a " + creditore.getNome() + ".");
 		}
-		giocatore.setPortafoglio(0);
-		giocatore.setInPrigione(false);
 
 		List<Giocatore> attivi = getGiocatoriAttivi();
 		if (attivi.size() == 1) {
@@ -548,16 +557,9 @@ public class Partita {
 	// ---------------------------------------------------------------------
 
 	private void vaiInPrigione(Giocatore giocatore) {
-		giocatore.setPosizione(Tabellone.POSIZIONE_PRIGIONE);
-		giocatore.setInPrigione(true);
-		giocatore.setTurniInPrigione(0);
+		giocatore.entraInPrigione();
 		doppiConsecutivi = 0;
 		rilancioConcesso = false;
-	}
-
-	private void esciDiPrigione(Giocatore giocatore) {
-		giocatore.setInPrigione(false);
-		giocatore.setTurniInPrigione(0);
 	}
 
 	private void restituisciCartaAlMazzo(Carta carta) {
@@ -629,8 +631,8 @@ public class Partita {
 	public int calcolaPatrimonio(Giocatore giocatore) {
 		int patrimonio = giocatore.getPortafoglio();
 		for (Casella casella : tabellone.getProprietaDi(giocatore)) {
-			patrimonio += casella.isIpotecata() ? casella.getValoreIpotecario() : casella.getCostoProprieta();
-			patrimonio += casella.getNumeroDiCasetteSullaCasella() * casella.getCostoCasetta();
+			patrimonio += casella.isIpotecata() ? casella.getValoreIpotecario() : casella.getPrezzo();
+			patrimonio += casella.getNumeroEdifici() * casella.getCostoCasetta();
 		}
 		return patrimonio;
 	}

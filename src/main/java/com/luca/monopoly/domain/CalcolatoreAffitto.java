@@ -1,11 +1,15 @@
 package com.luca.monopoly.domain;
 
-import com.luca.monopoly.domain.giocatore.Giocatore;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Regole per il calcolo degli affitti, separate dal flusso della partita.
  */
 public class CalcolatoreAffitto {
+
+    /** Chi possiede tutto il gruppo incassa il doppio sul terreno senza edifici. */
+    private static final int MOLTIPLICATORE_MONOPOLIO = 2;
 
     private final Tabellone tabellone;
 
@@ -22,25 +26,40 @@ public class CalcolatoreAffitto {
         if (proprietario == null || casella.isIpotecata()) {
             return 0;
         }
-        Contratto contratto = tabellone.getContratto(tabellone.getPosizione(casella));
+        Contratto contratto = casella.getContratto();
 
         switch (casella.getTipo()) {
             case TERRENO:
-                int numeroCasette = casella.getNumeroDiCasetteSullaCasella();
-                if (numeroCasette == 0 && tabellone.possiedeTuttoIlGruppo(proprietario, casella.getColore())) {
-                    // Monopolio: la rendita del terreno nudo raddoppia
-                    return contratto.getRenditaTerreno() * 2;
+                int edifici = casella.getNumeroEdifici();
+                if (edifici == 0 && tabellone.possiedeTuttoIlGruppo(proprietario, casella.getGruppo())) {
+                    return contratto.getRendita(0) * MOLTIPLICATORE_MONOPOLIO;
                 }
-                return contratto.calcolaAffitto(numeroCasette);
+                return contratto.getRendita(edifici);
             case STAZIONE:
-                // 25€ con una stazione, raddoppia per ogni altra stazione posseduta
-                int stazioni = tabellone.contaProprietaDelTipo(proprietario, TipoCasella.STAZIONE);
-                return contratto.getTassa() << (stazioni - 1);
+                return contratto.getRendita(tabellone.contaProprietaDelTipo(proprietario, TipoCasella.STAZIONE) - 1);
             case SOCIETA:
-                int societa = tabellone.contaProprietaDelTipo(proprietario, TipoCasella.SOCIETA);
-                return risultatoDadi * (societa == 2 ? 10 : 4);
+                return risultatoDadi
+                        * contratto.getRendita(tabellone.contaProprietaDelTipo(proprietario, TipoCasella.SOCIETA) - 1);
             default:
                 return 0;
+        }
+    }
+
+    /**
+     * Tabella degli affitti da mostrare sul contratto. Terreno: nudo, con il gruppo
+     * completo, con 1-4 case, con l'albergo. Stazione: con 1, 2, 3, 4 stazioni.
+     * Società: vuota, perché l'affitto dipende dai dadi.
+     */
+    public static List<Integer> tabellaRendite(Casella casella) {
+        switch (casella.getTipo()) {
+            case TERRENO:
+                List<Integer> rendite = new ArrayList<>(casella.getContratto().getRendite());
+                rendite.add(1, rendite.get(0) * MOLTIPLICATORE_MONOPOLIO);
+                return List.copyOf(rendite);
+            case STAZIONE:
+                return casella.getContratto().getRendite();
+            default:
+                return List.of();
         }
     }
 
