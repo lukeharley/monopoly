@@ -1,10 +1,8 @@
 package com.luca.monopoly;
 
-import com.luca.monopoly.domain.Casella;
+import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.Segnalini;
-import com.luca.monopoly.domain.giocatore.Giocatore;
 import com.luca.monopoly.repository.JpaGiocatore;
-import com.luca.monopoly.repository.JpaGiocatoreRepository;
 import com.luca.monopoly.service.GiocatoreService;
 import com.luca.monopoly.service.MonopolyService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,30 +24,36 @@ public class HomeController {
     @Autowired
     private MonopolyService monopolyService;
 
-    @Autowired
-    private JpaGiocatoreRepository jpaGiocatoreRepository;
-
     @GetMapping("/")
     public String getHome(Model model) {
 
+        List<JpaGiocatore> jpaGiocatori = giocatoreService.getGiocatori();
+
         List<GiocatoreView> giocatori = new ArrayList<>();
-        for (JpaGiocatore jpaGiocatore : jpaGiocatoreRepository.findAll()) {
+        List<Segnalini> segnaliniScelti = new ArrayList<>();
+        for (JpaGiocatore jpaGiocatore : jpaGiocatori) {
             GiocatoreView giocatoreView = new GiocatoreView();
             giocatoreView.setNome(jpaGiocatore.getNome());
             giocatoreView.setPortafoglio(jpaGiocatore.getPortafoglio());
             giocatoreView.setSegnalino(jpaGiocatore.getSegnalino().getNome());
 
             giocatori.add(giocatoreView);
+            segnaliniScelti.add(jpaGiocatore.getSegnalino());
         }
         model.addAttribute("giocatori", giocatori);
 
-        model.addAttribute("form", new HomeForm());
+        if (!model.containsAttribute("form")) {
+            model.addAttribute("form", new HomeForm());
+        }
         model.addAttribute("dadi", monopolyService.getMonopoly().getDadi().size());
+        model.addAttribute("partitaInCorso", monopolyService.getPartita() != null);
 
         List<SelectOptionView> segnalini = new ArrayList<>();
 
         for (Segnalini segnalino : Segnalini.values()) {
-            segnalini.add(new SelectOptionView(segnalino.ordinal(), segnalino.getNome()));
+            if (!segnaliniScelti.contains(segnalino)) {
+                segnalini.add(new SelectOptionView(segnalino.ordinal(), segnalino.getNome()));
+            }
         }
 
         model.addAttribute("segnalini", segnalini);
@@ -58,59 +63,38 @@ public class HomeController {
     }
 
     @PostMapping("/")
-    public String avviaPartita(Model model, HomeForm form) {
+    public String aggiungiGiocatore(HomeForm form, RedirectAttributes redirectAttributes) {
 
-        Segnalini segnalino = Segnalini.values()[form.getSegnalino()];
-        Giocatore giocatore = new Giocatore("", segnalino, 1500, 0);
-
-
-        JpaGiocatore giocatoreEsistente = jpaGiocatoreRepository.findBySegnalino(segnalino);
-        if (giocatoreEsistente != null) {
-            model.addAttribute("segnalinoSelezionato", "Il segnalino selezionato è già stato scelto.");
-        } else {
-            JpaGiocatore jpaGiocatore = new JpaGiocatore();
-            jpaGiocatore.setNome(form.getNome());
-            jpaGiocatore.setSegnalino(segnalino);
-            jpaGiocatore.setPortafoglio(giocatore.getPortafoglio());
-            jpaGiocatore.setPosizione(giocatore.getPosizione());
-
-            jpaGiocatoreRepository.save(jpaGiocatore);
+        try {
+            if (monopolyService.getPartita() != null) {
+                throw new MossaNonValidaException(
+                        "La partita è già iniziata: resettala per aggiungere nuovi giocatori.");
+            }
+            if (form.getSegnalino() < 0 || form.getSegnalino() >= Segnalini.values().length) {
+                throw new MossaNonValidaException("Segnalino non valido.");
+            }
+            giocatoreService.aggiungiGiocatore(form.getNome(), Segnalini.values()[form.getSegnalino()]);
+        } catch (MossaNonValidaException eccezione) {
+            redirectAttributes.addFlashAttribute("messaggio", eccezione.getMessage());
+            redirectAttributes.addFlashAttribute("form", form);
         }
 
+        return "redirect:/";
+    }
 
-        List<Casella> caselle = monopolyService.getMonopoly().getTabellone().getCaselle();
-        // Collections.reverse(caselle);
-
-        List<GiocatoreView> giocatori = new ArrayList<>();
-        for (JpaGiocatore jpaGiocatore : jpaGiocatoreRepository.findAll()) {
-            GiocatoreView giocatoreView = new GiocatoreView();
-            giocatoreView.setNome(jpaGiocatore.getNome());
-            giocatoreView.setPortafoglio(jpaGiocatore.getPortafoglio());
-            giocatoreView.setSegnalino(jpaGiocatore.getSegnalino().getNome());
-
-            giocatori.add(giocatoreView);
+    @PostMapping("/avviaPartita")
+    public String avviaPartita(RedirectAttributes redirectAttributes) {
+        try {
+            monopolyService.avviaPartita();
+        } catch (MossaNonValidaException eccezione) {
+            redirectAttributes.addFlashAttribute("messaggio", eccezione.getMessage());
         }
-
-        model.addAttribute("form", form);
-        model.addAttribute("dadi", monopolyService.getMonopoly().getDadi().size());
-        model.addAttribute("caselle", caselle);
-        model.addAttribute("giocatori", giocatori);
-
-        List<SelectOptionView> segnalini = new ArrayList<>();
-
-        for (Segnalini element : Segnalini.values()) {
-            segnalini.add(new SelectOptionView(element.ordinal(), element.getNome()));
-        }
-
-        model.addAttribute("segnalini", segnalini);
-
-        return "home";
-
+        return "redirect:/";
     }
 
     @GetMapping("/resettaPartita")
     public String resettaPartita() {
-        giocatoreService.eliminaGiocatori();
+        monopolyService.resettaPartita();
         return "redirect:/";
     }
 

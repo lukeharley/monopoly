@@ -1,101 +1,114 @@
 <!DOCTYPE html>
-<html lang="it" xmlns:th="http://www.thymeleaf.org"  xmlns:layout="http://www.w3.org/1999/xhtml">
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-
-    <script type="text/javascript" th:src="@{/js/monopoly.js}"></script>
-
-    <link rel="stylesheet" type="text/css" media="all" href="../../css.monopoly.css" th:href="@{/css/monopoly.css}" />
-    <title>Home</title>
+    <link rel="stylesheet" type="text/css" media="all" th:href="@{/css/monopoly.css}" />
+    <script type="text/javascript" th:src="@{/js/monopoly.js}" defer></script>
+    <title>Monopoly</title>
 </head>
 
 <body>
 
-    <div class="container">
+    <div class="container-fluid py-3">
 
-        <h1 class="text-center">Home page Monopoly <span><img th:src="@{/images/monopoly.png}" style="width:50px;"/></span></h1>
+        <h1 class="text-center">Monopoly <span><img th:src="@{/images/monopoly.png}" style="width:50px;" alt=""/></span></h1>
 
-        <h2 class="text-center mt-3" th:utext="'Benvenuti nel nostro <b>fantastico</b> gioco del Monopoly!'"></h2>
+        <div class="alert alert-warning text-center" th:if="${messaggio}" th:text="${messaggio}"></div>
 
-        <div class="row mt-5">
-            <div class="col">
-                <form action="#" th:action="@{/}" th:object="${form}" method="post">
+        <!-- Preparazione della partita: registrazione dei giocatori -->
+        <div class="container" th:unless="${partitaInCorso}">
 
-                    <div class="row mt-3">
-                        <label class="col-sm-4 form-label">Inserire il nome del giocatore</label>
-                        <div class="col-sm-4">
-                            <input class="form-control" type="text" th:field="*{nome}" th:value="${nome}" th:name="'nome'" th:id="'nome'" />
+            <h2 class="text-center mt-3" th:utext="'Benvenuti nel nostro <b>fantastico</b> gioco del Monopoly!'"></h2>
+
+            <div class="row mt-4">
+                <div class="col">
+                    <form action="#" th:action="@{/}" th:object="${form}" method="post">
+
+                        <div class="row mt-3">
+                            <label class="col-sm-4 form-label" for="nome">Inserire il nome del giocatore</label>
+                            <div class="col-sm-4">
+                                <input class="form-control" type="text" th:field="*{nome}" maxlength="30" required />
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="row mt-3">
-                        <label class="col-sm-4 form-label">Scegliere un segnalino (tra quelli disponibili)</label>
-                        <div class="col-sm-4">
-                            <select class="form-select" th:field="*{segnalino}">
-                                <option th:each="segnalinoScelto : ${segnalini}"
-                                        th:value="${segnalinoScelto.value}" th:text="${segnalinoScelto.label}"></option>
-                            </select>
+                        <div class="row mt-3">
+                            <label class="col-sm-4 form-label" for="segnalino">Scegliere un segnalino (tra quelli disponibili)</label>
+                            <div class="col-sm-4">
+                                <select class="form-select" th:field="*{segnalino}">
+                                    <option th:each="segnalinoScelto : ${segnalini}"
+                                            th:value="${segnalinoScelto.value}" th:text="${segnalinoScelto.label}"></option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="row mt-3">
-                        <div class="col">
-                            <button type="submit" class="btn btn-primary">Aggiungi giocatore</button>
+                        <div class="row mt-3">
+                            <div class="col">
+                                <button type="submit" class="btn btn-primary" th:disabled="${#lists.isEmpty(segnalini)}">Aggiungi giocatore</button>
+                            </div>
                         </div>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
-        </div>
 
-        <div class="segnalinoSelezionato">
-            <p th:text="${segnalinoSelezionato}"></p>
-        </div>
-
-        <div class="row mt-5">
-            <div class="col">
-                <div th:utext="'Numero di dadi: ' + ${dadi}"></div>
+            <div class="row mt-4">
+                <div class="col">
+                    <div th:utext="'Numero di dadi: ' + ${dadi}"></div>
+                </div>
             </div>
-        </div>
 
-        <div class="row mt-5 mb-5">
-
+            <div class="row mt-4 g-3">
                 <th:block th:each="giocatore : ${giocatori}">
-                    <div class="col-sm-4 col-12">
-                        <div class="card">
+                    <div class="col-sm-3 col-6">
+                        <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title">Giocatore [(${giocatoreStat.index + 1})]</h5>
-                                <p class="card-text nome" th:utext="'Nome: <b>' + ${giocatore.nome} + '</b>'"></p>
+                                <img class="segnalino-lobby" th:src="@{'/images/segnalini/' + ${#strings.toLowerCase(giocatore.segnalino)} + '.png'}" alt=""/>
+                                <p class="card-text nome">Nome: <b th:text="${giocatore.nome}"></b></p>
                                 <p class="card-text portafoglio" th:utext="'Portafoglio: <b>' + ${giocatore.portafoglio} + '€</b>'"></p>
                                 <p class="card-text segnalino" th:utext="'Segnalino: <b>' + ${giocatore.segnalino} + '</b>'"></p>
                             </div>
                         </div>
                     </div>
                 </th:block>
+            </div>
 
+            <div class="mt-4 d-flex gap-2">
+                <form th:action="@{/avviaPartita}" method="post">
+                    <button type="submit" class="btn btn-success" th:disabled="${#lists.size(giocatori) < 2}">Avvia partita</button>
+                </form>
+                <a class="btn btn-danger" id="reset-button" th:href="@{/resettaPartita}">Resetta giocatori</a>
+            </div>
+            <p class="text-muted mt-2" th:if="${#lists.size(giocatori) < 2}">Servono almeno 2 giocatori per iniziare.</p>
         </div>
 
-        <button type="button" class="btn btn-success" id="lancio-dadi-button" th:onclick="lanciaDadi();">Lancia dadi <span><img th:src="@{/images/dadi.png}" style="width:50px;"/></span></button>
-        <a class="btn btn-danger" id="reset-button" href="/resettaPartita">Resetta partita</a>
+        <!-- Partita in corso: il contenuto viene disegnato da monopoly.js -->
+        <div id="partita" class="partita" th:if="${partitaInCorso}">
+            <div class="tabellone" id="tabellone">
+                <div class="centro">
+                    <div class="dadi" id="dadi"></div>
+                    <div id="turno" class="turno"></div>
+                    <div id="errore" class="alert alert-danger py-1 px-2" hidden></div>
+                    <div id="carta" class="carta" hidden></div>
+                    <div id="azioni" class="azioni"></div>
+                    <ul id="eventi" class="eventi"></ul>
+                </div>
+            </div>
 
-        <div class="container tabellone"></div>
-            <div class="grid mt-5">
-                <div class="g-col">
-                    <th:block th:each="casella : ${caselle}" style="height: 100px; width: 100px; position: relative;">
-                        <div class="casella" th:id="'casella_' + ${casellaStat.index}" style="text-align: center; position: relative;">
-                            <span th:text="${casella.testo}"></span>
-                            <div> </div>
-                        </div>
-                    </th:block>
+            <div class="pannello">
+                <div id="giocatori"></div>
+                <div id="dettaglio-casella" class="card mt-3">
+                    <div class="card-body text-muted">Clicca su una casella del tabellone per vederne i dettagli e gestire le tue proprietà.</div>
+                </div>
+                <div class="mt-3 d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="termina-button">Termina partita</button>
+                    <a class="btn btn-outline-danger btn-sm" id="reset-button" th:href="@{/resettaPartita}"
+                       onclick="return confirm('Vuoi davvero cancellare la partita e i giocatori?');">Resetta partita</a>
                 </div>
             </div>
         </div>
 
-
-            
-        
     </div>
 
 </body>

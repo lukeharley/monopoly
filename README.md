@@ -1,5 +1,37 @@
 # monopoly
 
+## Come avviare il gioco
+
+- Con MySQL (configurazione in `application.yml`): `mvn spring-boot:run`
+- Senza MySQL, con database H2 in memoria: `mvn spring-boot:run -Dspring-boot.run.profiles=dev`
+
+Poi aprire http://localhost:8080, registrare da 2 a 8 giocatori (nome + segnalino) e premere **Avvia partita**.
+Si gioca a turni sullo stesso computer: il giocatore di turno lancia i dadi, decide se comprare la proprietà libera,
+gestisce le proprie proprietà cliccando le caselle del tabellone (case, alberghi, ipoteche) e infine passa il turno.
+
+Test: `mvn test`
+
+## Regole implementate
+
+- Lancio di 2 dadi; con un doppio si rilancia, al terzo doppio consecutivo si va in prigione.
+- Passaggio dal Via: +200€.
+- Acquisto facoltativo di terreni, stazioni e società.
+- Affitti versati al proprietario: terreno (doppio con il monopolio del colore), case e alberghi secondo i Contratti,
+  stazioni 25/50/100/200€, società 4 o 10 volte il risultato dei dadi. Le proprietà ipotecate non rendono.
+- Costruzione uniforme di case e alberghi (solo con il monopolio e nessun terreno del gruppo ipotecato),
+  vendita alla banca a metà prezzo, scorte limitate di 32 case e 12 alberghi.
+- Ipoteca (metà del prezzo) e riscatto (ipoteca + 10%).
+- 16 Imprevisti e 16 Probabilità mescolati, incluse "Uscite gratis di prigione" e riparazioni per case/alberghi.
+- Prigione: multa di 125€, carta "Uscite gratis", oppure doppio; al terzo tentativo fallito si paga e si esce.
+- Tasse: Patrimoniale 200€, di Lusso 100€.
+- Debiti: se mancano i contanti, il gioco vende automaticamente gli edifici e ipoteca le proprietà;
+  se non basta il giocatore va in bancarotta (i beni passano al creditore o tornano alla banca).
+- Vince l'ultimo giocatore rimasto, oppure (pulsante **Termina partita**) chi ha il patrimonio più alto.
+
+Non implementati: aste, scambi tra giocatori.
+
+## Note di progetto
+
 Fonti
 Regolamento:
 https://www.giochi-da-tavolo.it/monpoli-istruzioni-regole/

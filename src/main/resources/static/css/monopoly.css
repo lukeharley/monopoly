@@ -1,54 +1,234 @@
+[hidden] {
+    display: none !important;
+}
+
 h1 {
     color: brown;
 }
 
-.casella {
-    border: 1px solid black; 
-    width: 8%; 
-    height: 100px; 
-}
-
-.posizioneSegnalino {
-    background-image: url("/images/segnalini/scarpone.png"); 
-    background-repeat: no-repeat;
-    background-size: contain;
-    width:100px;
-    height:50px;
-    position: absolute; 
-    top: 10px; 
-    left: 10px; 
-}
-
-.container.tabellone {
-    display:flex; 
-    flex-direction: row-reverse;
-}
-
-.group-0 {
-    /* Stile per il primo gruppo di 10 caselle */
-    background-color: lightblue;
-    display: flex;
-    flex-direction: row-reverse;
-}
-
-.group-1 {
-    /* Stile per il secondo gruppo di 10 caselle */
-    background-color: lightgreen;
-    display: inline-block;
-}
-
-.group-2 {
-    /* Stile per il terzo gruppo di 10 caselle */
-    background-color: lightyellow;
-    display: block;
-}
-
-.group-3 {
-    /* Stile per il quarto gruppo di 10 caselle */
-    background-color: lightcoral;
-    display: inline-block;
-}
-
 #reset-button {
-    height: 45px;
+    line-height: 1.6;
+}
+
+.segnalino-lobby {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+/* ---------- Partita ---------- */
+
+.partita {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.pannello {
+    width: 340px;
+    max-width: 100%;
+}
+
+/* Tabellone 11x11: le 40 caselle occupano il bordo, il centro è libero */
+.tabellone {
+    display: grid;
+    grid-template-columns: 1.5fr repeat(9, 1fr) 1.5fr;
+    grid-template-rows: 1.5fr repeat(9, 1fr) 1.5fr;
+    width: min(100%, 820px);
+    aspect-ratio: 1;
+    background: #cde6d0;
+    border: 2px solid #222;
+    font-size: clamp(6px, 1.1vw, 10px);
+}
+
+.casella {
+    position: relative;
+    border: 1px solid #555;
+    background: #f7f4ea;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 1px;
+}
+
+.casella:hover {
+    outline: 2px solid #0d6efd;
+    z-index: 2;
+}
+
+.casella.selezionata {
+    outline: 3px solid #0d6efd;
+    z-index: 3;
+}
+
+.casella .banda {
+    width: 100%;
+    min-height: 18%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+}
+
+.casella .nome {
+    font-weight: 600;
+    line-height: 1.1;
+    padding: 0 1px;
+}
+
+.casella .prezzo {
+    font-size: 0.9em;
+}
+
+.casella .proprietario {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.casella.ipotecata {
+    background: repeating-linear-gradient(45deg, #eee, #eee 4px, #ccc 4px, #ccc 8px);
+}
+
+.casella .segnalini {
+    position: absolute;
+    inset: 20% 0 4px 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.casella .segnalini img {
+    width: 45%;
+    max-width: 30px;
+    filter: drop-shadow(0 0 2px #fff);
+}
+
+.casella .segnalini img.corrente {
+    filter: drop-shadow(0 0 3px #0d6efd) drop-shadow(0 0 3px #0d6efd);
+}
+
+.casa {
+    width: 8px;
+    height: 8px;
+    background: #2e7d32;
+    border: 1px solid #fff;
+}
+
+.albergo {
+    width: 18px;
+    height: 9px;
+    background: #c62828;
+    border: 1px solid #fff;
+}
+
+.centro {
+    grid-row: 2 / 11;
+    grid-column: 2 / 11;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    gap: 8px;
+    font-size: 14px;
+    overflow: hidden;
+}
+
+.dadi {
+    font-size: 48px;
+    line-height: 1;
+}
+
+.turno {
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.carta {
+    background: #fff8e1;
+    border: 2px solid #f9a825;
+    border-radius: 6px;
+    padding: 6px 10px;
+    max-width: 90%;
+    text-align: center;
+}
+
+.azioni {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+
+.eventi {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    padding: 6px 6px 6px 24px;
+    margin: 0;
+    font-size: 12px;
+}
+
+.giocatore-card {
+    border-left: 6px solid transparent;
+}
+
+.giocatore-card.corrente {
+    box-shadow: 0 0 0 2px #0d6efd;
+}
+
+.giocatore-card.bancarotta {
+    opacity: 0.5;
+}
+
+.giocatore-card img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.proprieta-giocatore {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 4px;
+}
+
+.proprieta-giocatore span {
+    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer;
+    text-shadow: 0 0 2px #000;
+}
+
+@media (max-width: 600px) {
+    .dadi {
+        font-size: 28px;
+    }
+
+    .turno {
+        font-size: 13px;
+    }
+
+    .centro {
+        font-size: 11px;
+        padding: 4px;
+    }
 }

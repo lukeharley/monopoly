@@ -2,49 +2,46 @@ package com.luca.monopoly.domain;
 
 public class Carta {
 
-    private String testo;
-    private int importo;
-    private String nuovaPosizione;
-    private int shiftPosizione;
+    private final String testo;
+    private final EffettoCarta effetto;
+    /*
+     * Significato in base all'effetto: importo (INCASSA, PAGA), posizione di
+     * destinazione (VAI_A, TORNA_A), numero di caselle (SPOSTA, negativo = indietro),
+     * costo per ogni casa (RIPARAZIONI).
+     */
+    private final int valore;
+    /* Solo per RIPARAZIONI: costo per ogni albergo. */
+    private final int valoreAlbergo;
 
-    public Carta() {
-
+    public Carta(String testo, EffettoCarta effetto, int valore, int valoreAlbergo) {
+        this.testo = testo;
+        this.effetto = effetto;
+        this.valore = valore;
+        this.valoreAlbergo = valoreAlbergo;
     }
 
-    public Carta(String testo, int importo, String nuovaPosizione, int shiftPosizione) {
-        this.testo = testo;
-        this.importo = importo;
-        this.nuovaPosizione = nuovaPosizione;
-        this.shiftPosizione = shiftPosizione;
+    public Carta(String testo, EffettoCarta effetto, int valore) {
+        this(testo, effetto, valore, 0);
+    }
+
+    public Carta(String testo, EffettoCarta effetto) {
+        this(testo, effetto, 0, 0);
     }
 
     public String getTesto() {
         return testo;
     }
 
-    public int getImporto() {
-        return importo;
+    public EffettoCarta getEffetto() {
+        return effetto;
     }
 
-    public String getNuovaPosizione() {
-        return nuovaPosizione;
+    public int getValore() {
+        return valore;
     }
 
-    public void setNuovaPosizione(String nuovaPosizione) {
-        this.nuovaPosizione = nuovaPosizione;
-    }
-
-    public int getShiftPosizione() {
-        return shiftPosizione;
-    }
-
-    public void setShiftPosizione(int shiftPosizione) {
-        this.shiftPosizione = shiftPosizione;
-    }
-
-    public static boolean eUnNumero(String str) {
-        boolean isNumeric = str.matches("[+-]?\\d*(\\.\\d+)?");
-        return isNumeric;
+    public int getValoreAlbergo() {
+        return valoreAlbergo;
     }
 
 }
