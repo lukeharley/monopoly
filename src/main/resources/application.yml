@@ -24,3 +24,12 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   main:
     allow-bean-definition-overriding: true
+  web:
+    resources:
+      chain:
+        strategy:
+          content:
+            # JS e CSS servite con un hash nel nome (es. monopoly-3f2a....js):
+            # a ogni modifica cambia l'indirizzo e il browser non usa la copia vecchia
+            enabled: true
+            paths: /js/**,/css/**
