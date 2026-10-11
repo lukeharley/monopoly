@@ -1,105 +1,76 @@
 package com.luca.monopoly.domain;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.luca.monopoly.domain.giocatore.Giocatore;
-
+/**
+ * Il tabellone dell'edizione italiana in euro: 40 caselle con i relativi
+ * contratti e i mazzi di Imprevisti e Probabilità (nell'ordine di stampa).
+ */
 public class Tabellone {
 
 	public static final int NUMERO_CASELLE = 40;
 	public static final int POSIZIONE_PRIGIONE = 10;
 
-	private final List<Contratto> contratti = new ArrayList<>();
+	private static final int CASELLE_PER_LATO = 10;
+	/** Una casa costa 50€ sul primo lato, 100€ sul secondo, 150€ sul terzo e 200€ sul quarto. */
+	private static final int COSTO_CASA_PER_LATO = 50;
+	private static final int PREZZO_STAZIONE = 200;
+	private static final int PREZZO_SOCIETA = 150;
+	private static final List<Integer> RENDITE_STAZIONE = List.of(25, 50, 100, 200);
+	private static final List<Integer> MOLTIPLICATORI_SOCIETA = List.of(4, 10);
+
 	private final List<Casella> caselle = new ArrayList<>();
+	private final Map<GruppoColore, List<Casella>> caselleDelGruppo = new EnumMap<>(GruppoColore.class);
 	private final List<Imprevisto> imprevisti = new ArrayList<>();
 	private final List<Probabilita> probabilita = new ArrayList<>();
 
 	public Tabellone() {
 
-		caselle.add(new Casella("Via", TipoCasella.VIA));
-		caselle.add(terreno("Vicolo Corto", "fucsia", 60));
-		caselle.add(new Casella("Probabilità", TipoCasella.PROBABILITA));
-		caselle.add(terreno("Vicolo Stretto", "fucsia", 60));
-		caselle.add(new Casella("Tassa Patrimoniale", TipoCasella.TASSA, null, 200, 0));
-		caselle.add(new Casella("Stazione Sud", TipoCasella.STAZIONE, null, 200, 0));
-		caselle.add(terreno("Bastioni Gran Sasso", "azzurro", 100));
-		caselle.add(new Casella("Imprevisti", TipoCasella.IMPREVISTI));
-		caselle.add(terreno("Viale Monterosa", "azzurro", 100));
-		caselle.add(terreno("Viale Vesuvio", "azzurro", 120));
-		caselle.add(new Casella("Prigione/Transito", TipoCasella.PRIGIONE));
-		caselle.add(terreno("Via Accademia", "arancione", 140));
-		caselle.add(new Casella("Società Elettrica", TipoCasella.SOCIETA, null, 150, 0));
-		caselle.add(terreno("Corso Ateneo", "arancione", 140));
-		caselle.add(terreno("Piazza Università", "arancione", 160));
-		caselle.add(new Casella("Stazione Ovest", TipoCasella.STAZIONE, null, 200, 0));
-		caselle.add(terreno("Via Verdi", "marrone", 180));
-		caselle.add(new Casella("Probabilità", TipoCasella.PROBABILITA));
-		caselle.add(terreno("Corso Raffaello", "marrone", 180));
-		caselle.add(terreno("Piazza Dante", "marrone", 200));
-		caselle.add(new Casella("Posteggio Gratuito", TipoCasella.POSTEGGIO));
-		caselle.add(terreno("Via Marco Polo", "rosso", 220));
-		caselle.add(new Casella("Imprevisti", TipoCasella.IMPREVISTI));
-		caselle.add(terreno("Corso Magellano", "rosso", 220));
-		caselle.add(terreno("Largo Colombo", "rosso", 240));
-		caselle.add(new Casella("Stazione Nord", TipoCasella.STAZIONE, null, 200, 0));
-		caselle.add(terreno("Viale Costantino", "giallo", 260));
-		caselle.add(terreno("Viale Traiano", "giallo", 260));
-		caselle.add(new Casella("Società Acqua Potabile", TipoCasella.SOCIETA, null, 150, 0));
-		caselle.add(terreno("Piazza Giulio Cesare", "giallo", 280));
-		caselle.add(new Casella("In prigione!", TipoCasella.VAI_IN_PRIGIONE));
-		caselle.add(terreno("Via Roma", "verde", 300));
-		caselle.add(terreno("Corso Impero", "verde", 300));
-		caselle.add(new Casella("Probabilità", TipoCasella.PROBABILITA));
-		caselle.add(terreno("Largo Augusto", "verde", 320));
-		caselle.add(new Casella("Stazione Est", TipoCasella.STAZIONE, null, 200, 0));
-		caselle.add(new Casella("Imprevisti", TipoCasella.IMPREVISTI));
-		caselle.add(terreno("Viale dei Giardini", "viola", 350));
-		caselle.add(new Casella("Tassa di Lusso", TipoCasella.TASSA, null, 100, 0));
-		caselle.add(terreno("Parco della Vittoria", "viola", 400));
-
-		// Rendite: terreno, 1, 2, 3, 4 case, albergo (Monopoly edizione in euro)
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Vicolo Corto", 2, 10, 30, 90, 160, 250));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Vicolo Stretto", 4, 20, 60, 180, 320, 450));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Stazione Sud", 0, 0, 65, 25));
-		contratti.add(new Contratto("Bastioni Gran Sasso", 6, 30, 90, 270, 400, 550));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Viale Monterosa", 6, 30, 90, 270, 400, 550));
-		contratti.add(new Contratto("Viale Vesuvio", 8, 40, 100, 300, 450, 600));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Via Accademia", 10, 50, 150, 450, 625, 750));
-		contratti.add(new Contratto("Società Elettrica", 0, 0, 50, 50));
-		contratti.add(new Contratto("Corso Ateneo", 10, 50, 150, 450, 625, 750));
-		contratti.add(new Contratto("Piazza Università", 12, 60, 180, 500, 700, 900));
-		contratti.add(new Contratto("Stazione Ovest", 0, 0, 65, 25));
-		contratti.add(new Contratto("Via Verdi", 14, 70, 200, 550, 750, 950));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Corso Raffaello", 14, 70, 200, 550, 750, 950));
-		contratti.add(new Contratto("Piazza Dante", 16, 80, 220, 600, 800, 1000));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Via Marco Polo", 18, 90, 250, 700, 875, 1050));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Corso Magellano", 18, 90, 250, 700, 875, 1050));
-		contratti.add(new Contratto("Largo Colombo", 20, 100, 300, 750, 925, 1100));
-		contratti.add(new Contratto("Stazione Nord", 0, 0, 65, 25));
-		contratti.add(new Contratto("Viale Costantino", 22, 110, 330, 800, 975, 1150));
-		contratti.add(new Contratto("Viale Traiano", 22, 110, 330, 800, 975, 1150));
-		contratti.add(new Contratto("Società Acqua Potabile", 0, 0, 50, 50));
-		contratti.add(new Contratto("Piazza Giulio Cesare", 24, 120, 360, 850, 1025, 1200));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Via Roma", 26, 130, 390, 900, 1100, 1275));
-		contratti.add(new Contratto("Corso Impero", 26, 130, 390, 900, 1100, 1275));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Largo Augusto", 28, 150, 450, 1000, 1200, 1400));
-		contratti.add(new Contratto("Stazione Est", 0, 0, 65, 25));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Viale dei Giardini", 35, 175, 500, 1100, 1300, 1500));
-		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
-		contratti.add(new Contratto("Parco della Vittoria", 50, 200, 600, 1400, 1700, 2000));
+		speciale("Via", TipoCasella.VIA);
+		terreno("Vicolo Corto", GruppoColore.FUCSIA, 60, 2, 10, 30, 90, 160, 250);
+		speciale("Probabilità", TipoCasella.PROBABILITA);
+		terreno("Vicolo Stretto", GruppoColore.FUCSIA, 60, 4, 20, 60, 180, 320, 450);
+		tassa("Tassa Patrimoniale", 200);
+		stazione("Stazione Sud");
+		terreno("Bastioni Gran Sasso", GruppoColore.AZZURRO, 100, 6, 30, 90, 270, 400, 550);
+		speciale("Imprevisti", TipoCasella.IMPREVISTI);
+		terreno("Viale Monterosa", GruppoColore.AZZURRO, 100, 6, 30, 90, 270, 400, 550);
+		terreno("Viale Vesuvio", GruppoColore.AZZURRO, 120, 8, 40, 100, 300, 450, 600);
+		speciale("Prigione/Transito", TipoCasella.PRIGIONE);
+		terreno("Via Accademia", GruppoColore.ARANCIONE, 140, 10, 50, 150, 450, 625, 750);
+		societa("Società Elettrica");
+		terreno("Corso Ateneo", GruppoColore.ARANCIONE, 140, 10, 50, 150, 450, 625, 750);
+		terreno("Piazza Università", GruppoColore.ARANCIONE, 160, 12, 60, 180, 500, 700, 900);
+		stazione("Stazione Ovest");
+		terreno("Via Verdi", GruppoColore.MARRONE, 180, 14, 70, 200, 550, 750, 950);
+		speciale("Probabilità", TipoCasella.PROBABILITA);
+		terreno("Corso Raffaello", GruppoColore.MARRONE, 180, 14, 70, 200, 550, 750, 950);
+		terreno("Piazza Dante", GruppoColore.MARRONE, 200, 16, 80, 220, 600, 800, 1000);
+		speciale("Posteggio Gratuito", TipoCasella.POSTEGGIO);
+		terreno("Via Marco Polo", GruppoColore.ROSSO, 220, 18, 90, 250, 700, 875, 1050);
+		speciale("Imprevisti", TipoCasella.IMPREVISTI);
+		terreno("Corso Magellano", GruppoColore.ROSSO, 220, 18, 90, 250, 700, 875, 1050);
+		terreno("Largo Colombo", GruppoColore.ROSSO, 240, 20, 100, 300, 750, 925, 1100);
+		stazione("Stazione Nord");
+		terreno("Viale Costantino", GruppoColore.GIALLO, 260, 22, 110, 330, 800, 975, 1150);
+		terreno("Viale Traiano", GruppoColore.GIALLO, 260, 22, 110, 330, 800, 975, 1150);
+		societa("Società Acqua Potabile");
+		terreno("Piazza Giulio Cesare", GruppoColore.GIALLO, 280, 24, 120, 360, 850, 1025, 1200);
+		speciale("In prigione!", TipoCasella.VAI_IN_PRIGIONE);
+		terreno("Via Roma", GruppoColore.VERDE, 300, 26, 130, 390, 900, 1100, 1275);
+		terreno("Corso Impero", GruppoColore.VERDE, 300, 26, 130, 390, 900, 1100, 1275);
+		speciale("Probabilità", TipoCasella.PROBABILITA);
+		terreno("Largo Augusto", GruppoColore.VERDE, 320, 28, 150, 450, 1000, 1200, 1400);
+		stazione("Stazione Est");
+		speciale("Imprevisti", TipoCasella.IMPREVISTI);
+		terreno("Viale dei Giardini", GruppoColore.VIOLA, 350, 35, 175, 500, 1100, 1300, 1500);
+		tassa("Tassa di Lusso", 100);
+		terreno("Parco della Vittoria", GruppoColore.VIOLA, 400, 50, 200, 600, 1400, 1700, 2000);
 
 		imprevisti.add(new Imprevisto("Andate sino al Largo Colombo: se passate dal Via ritirate 200 euro.",
 				EffettoCarta.VAI_A, 24));
@@ -158,57 +129,57 @@ public class Tabellone {
 		probabilita.add(new Probabilita("Avete ceduto delle azioni: ricavate 125 euro.", EffettoCarta.INCASSA, 125));
 		probabilita.add(new Probabilita("Pagate il conto del dottore: 125 euro.", EffettoCarta.PAGA, 125));
 
+		for (GruppoColore gruppo : GruppoColore.values()) {
+			caselleDelGruppo.put(gruppo, caselle.stream()
+					.filter(casella -> casella.getGruppo() == gruppo)
+					.collect(Collectors.toUnmodifiableList()));
+		}
 	}
 
-	/*
-	 * Il costo di una casetta dipende dal lato del tabellone su cui si trova il
-	 * terreno: 50 euro per il primo lato, 100 per il secondo, 150 per il terzo e
-	 * 200 per il quarto.
-	 */
-	private Casella terreno(String testo, String colore, int costoProprieta) {
-		int lato = caselle.size() / 10;
-		int costoCasetta = (lato + 1) * 50;
-		return new Casella(testo, TipoCasella.TERRENO, colore, costoProprieta, costoCasetta);
+	private void speciale(String testo, TipoCasella tipo) {
+		caselle.add(Casella.speciale(caselle.size(), testo, tipo));
+	}
+
+	private void tassa(String testo, int importo) {
+		caselle.add(Casella.tassa(caselle.size(), testo, importo));
+	}
+
+	private void terreno(String testo, GruppoColore gruppo, int prezzo, int nudo, int unaCasa, int dueCase,
+			int treCase, int quattroCase, int albergo) {
+		int lato = caselle.size() / CASELLE_PER_LATO;
+		int costoCasetta = (lato + 1) * COSTO_CASA_PER_LATO;
+		caselle.add(Casella.terreno(caselle.size(), testo, gruppo, prezzo, costoCasetta,
+				Contratto.terreno(nudo, unaCasa, dueCase, treCase, quattroCase, albergo)));
+	}
+
+	private void stazione(String testo) {
+		caselle.add(Casella.proprieta(caselle.size(), testo, TipoCasella.STAZIONE, PREZZO_STAZIONE,
+				Contratto.conRendite(RENDITE_STAZIONE)));
+	}
+
+	private void societa(String testo) {
+		caselle.add(Casella.proprieta(caselle.size(), testo, TipoCasella.SOCIETA, PREZZO_SOCIETA,
+				Contratto.conRendite(MOLTIPLICATORI_SOCIETA)));
 	}
 
 	public List<Casella> getCaselle() {
-		return caselle;
+		return Collections.unmodifiableList(caselle);
 	}
 
 	public Casella getCasella(int posizione) {
 		return caselle.get(posizione);
 	}
 
-	public List<Contratto> getContratti() {
-		return contratti;
-	}
-
-	public Contratto getContratto(int posizione) {
-		return contratti.get(posizione);
-	}
-
 	public List<Imprevisto> getImprevisti() {
-		return imprevisti;
+		return Collections.unmodifiableList(imprevisti);
 	}
 
 	public List<Probabilita> getProbabilita() {
-		return probabilita;
+		return Collections.unmodifiableList(probabilita);
 	}
 
-	public List<Casella> getCaselleDelColore(String colore) {
-		return caselle.stream()
-				.filter(casella -> casella.getColore() != null && casella.getColore().equals(colore))
-				.collect(Collectors.toList());
-	}
-
-	public List<Casella> getCaselleDelTipo(TipoCasella tipo) {
-		return caselle.stream()
-				.filter(casella -> casella.getTipo() == tipo)
-				.collect(Collectors.toList());
-	}
-
-	public int getPosizione(Casella casella) {
-		return caselle.indexOf(casella);
+	public List<Casella> getCaselleDelGruppo(GruppoColore gruppo) {
+		return caselleDelGruppo.get(gruppo);
 	}
 
 	public List<Casella> getProprietaDi(Giocatore giocatore) {
@@ -217,8 +188,8 @@ public class Tabellone {
 				.collect(Collectors.toList());
 	}
 
-	public boolean possiedeTuttoIlGruppo(Giocatore giocatore, String colore) {
-		return getCaselleDelColore(colore).stream()
+	public boolean possiedeTuttoIlGruppo(Giocatore giocatore, GruppoColore gruppo) {
+		return getCaselleDelGruppo(gruppo).stream()
 				.allMatch(casella -> casella.getProprietario() == giocatore);
 	}
 

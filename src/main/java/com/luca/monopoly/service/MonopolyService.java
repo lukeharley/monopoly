@@ -1,12 +1,12 @@
 package com.luca.monopoly.service;
 
 import com.luca.monopoly.domain.FasePartita;
+import com.luca.monopoly.domain.Giocatore;
 import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.domain.PartitaAssenteException;
 import com.luca.monopoly.domain.Segnalini;
 import com.luca.monopoly.domain.StatoCambiatoException;
-import com.luca.monopoly.domain.giocatore.Giocatore;
 import com.luca.monopoly.repository.JpaGiocatore;
 import org.springframework.stereotype.Service;
 
@@ -68,8 +68,7 @@ public class MonopolyService {
 
         List<Giocatore> giocatori = new ArrayList<>();
         for (JpaGiocatore jpaGiocatore : giocatoreService.getGiocatori()) {
-            giocatori.add(new Giocatore(jpaGiocatore.getNome(), jpaGiocatore.getSegnalino(),
-                    Partita.PORTAFOGLIO_INIZIALE, 0));
+            giocatori.add(new Giocatore(jpaGiocatore.getNome(), jpaGiocatore.getSegnalino()));
         }
 
         partita = new Partita(giocatori);

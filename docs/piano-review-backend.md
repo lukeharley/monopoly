@@ -1,7 +1,7 @@
 # Piano di review del backend Monopoly
 
 **Stato:** ✅ rivisto (Opus 5.5) — **approvato con modifiche**: vedi §7, che prevale sulle sezioni precedenti.
-**Avanzamento:** PR 1 (sicurezza e integrità) completata — voci E5, E1, A1-A5, E3, E4, C2, D1. Restano PR 2 e PR 3.
+**Avanzamento:** PR 1 (sicurezza e integrità) completata — E5, E1, A1-A5, E3, E4, C2, D1. PR 2 (dominio) completata — F2, C1, C4, C7, C8, C9, C10, B2, B3, D2. Resta la PR 3.
 **Branch analizzato:** `claude/tender-keller-j3u55n` al commit `c31479c`.
 **Perimetro:** `src/main/java/com/luca/monopoly/**`, `src/main/resources/application*.yml`, `pom.xml`, `src/test/java/com/luca/monopoly/**`. Escluso il modulo `com.luca.customscraper` e il frontend.
 

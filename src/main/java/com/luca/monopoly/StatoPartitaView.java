@@ -1,12 +1,13 @@
 package com.luca.monopoly;
 
 import com.luca.monopoly.domain.Asta;
+import com.luca.monopoly.domain.CalcolatoreAffitto;
 import com.luca.monopoly.domain.Casella;
-import com.luca.monopoly.domain.Contratto;
 import com.luca.monopoly.domain.Debito;
+import com.luca.monopoly.domain.Giocatore;
 import com.luca.monopoly.domain.Imprevisto;
 import com.luca.monopoly.domain.Partita;
-import com.luca.monopoly.domain.giocatore.Giocatore;
+import com.luca.monopoly.domain.TipoCasella;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,20 +64,18 @@ public record StatoPartitaView(
             giocatoriView.add(new GiocatoreStatoView(giocatore.getNome(), giocatore.getSegnalino().getNome(),
                     giocatore.getPortafoglio(), partita.calcolaPatrimonio(giocatore), giocatore.getPosizione(),
                     giocatore.isInPrigione(), giocatore.getTurniInPrigione(),
-                    giocatore.getCarteUscitaDiPrigione().size(), giocatore.isInBancarotta()));
+                    giocatore.getNumeroCarteUscitaDiPrigione(), giocatore.isInBancarotta()));
         }
 
         List<CasellaView> caselleView = new ArrayList<>();
-        List<Casella> caselle = partita.getTabellone().getCaselle();
-        for (int posizione = 0; posizione < caselle.size(); posizione++) {
-            Casella casella = caselle.get(posizione);
+        for (Casella casella : partita.getTabellone().getCaselle()) {
             Integer proprietario = casella.getProprietario() == null ? null
                     : giocatori.indexOf(casella.getProprietario());
-            caselleView.add(new CasellaView(posizione, casella.getTesto(), casella.getTipo().name(),
-                    casella.getColore(), casella.getCostoProprieta(), casella.getCostoCasetta(),
-                    casella.getNumeroDiCasetteSullaCasella(), proprietario, casella.isIpotecata(),
+            caselleView.add(new CasellaView(casella.getPosizione(), casella.getTesto(), casella.getTipo().name(),
+                    casella.getGruppo() == null ? null : casella.getGruppo().getNome(), costo(casella),
+                    casella.getCostoCasetta(), casella.getNumeroEdifici(), proprietario, casella.isIpotecata(),
                     partita.calcolaAffitto(casella), casella.getValoreIpotecario(), casella.getCostoRiscatto(),
-                    rendite(casella, partita.getTabellone().getContratto(posizione))));
+                    CalcolatoreAffitto.tabellaRendite(casella)));
         }
 
         CartaView ultimaCarta = partita.getUltimaCartaPescata() == null ? null
@@ -88,7 +87,7 @@ public record StatoPartitaView(
         AstaView astaView = null;
         Asta asta = partita.getAsta();
         if (asta != null) {
-            astaView = new AstaView(partita.getTabellone().getPosizione(asta.getCasella()), asta.getOffertaMassima(),
+            astaView = new AstaView(asta.getCasella().getPosizione(), asta.getOffertaMassima(),
                     asta.getMigliorOfferente() == null ? null : giocatori.indexOf(asta.getMigliorOfferente()),
                     giocatori.indexOf(asta.getOfferenteDiTurno()),
                     asta.getPartecipanti().stream().map(giocatori::indexOf).toList());
@@ -108,22 +107,8 @@ public record StatoPartitaView(
                 giocatoriView, caselleView, new ArrayList<>(partita.getEventi()));
     }
 
-    /**
-     * Tabella degli affitti del contratto. Terreno: nudo, gruppo completo, 1-4 case, albergo.
-     * Stazione: con 1, 2, 3 e 4 stazioni possedute.
-     */
-    private static List<Integer> rendite(Casella casella, Contratto contratto) {
-        switch (casella.getTipo()) {
-            case TERRENO:
-                return List.of(contratto.getRenditaTerreno(), contratto.getRenditaTerreno() * 2,
-                        contratto.getRenditaUnaCasetta(), contratto.getRenditaDueCasette(),
-                        contratto.getRenditaTreCasette(), contratto.getRenditaQuattroCasette(),
-                        contratto.getRenditaAlbergo());
-            case STAZIONE:
-                return List.of(contratto.getTassa(), contratto.getTassa() << 1, contratto.getTassa() << 2,
-                        contratto.getTassa() << 3);
-            default:
-                return List.of();
-        }
+    /** Prezzo per le proprietà, importo da pagare per le tasse. */
+    private static int costo(Casella casella) {
+        return casella.getTipo() == TipoCasella.TASSA ? casella.getImportoTassa() : casella.getPrezzo();
     }
 }
