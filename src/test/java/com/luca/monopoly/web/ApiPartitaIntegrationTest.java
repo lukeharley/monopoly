@@ -1,6 +1,6 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web;
 
-import com.luca.monopoly.domain.Segnalini;
+import com.luca.monopoly.domain.Segnalino;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +43,7 @@ class ApiPartitaIntegrationTest {
 		mockMvc.perform(post("/resettaPartita")).andExpect(status().is3xxRedirection());
 	}
 
-	private void aggiungiGiocatore(String nome, Segnalini segnalino) throws Exception {
+	private void aggiungiGiocatore(String nome, Segnalino segnalino) throws Exception {
 		mockMvc.perform(post("/").param("nome", nome).param("segnalino", segnalino.name()))
 				.andExpect(status().is3xxRedirection());
 	}
@@ -55,8 +55,8 @@ class ApiPartitaIntegrationTest {
 	}
 
 	private void avviaPartitaConDueGiocatori() throws Exception {
-		aggiungiGiocatore("Luca", Segnalini.CANE);
-		aggiungiGiocatore("Mario", Segnalini.DINOSAURO);
+		aggiungiGiocatore("Luca", Segnalino.CANE);
+		aggiungiGiocatore("Mario", Segnalino.DINOSAURO);
 		mockMvc.perform(post("/avviaPartita")).andExpect(status().is3xxRedirection());
 	}
 
@@ -69,7 +69,7 @@ class ApiPartitaIntegrationTest {
 
 	@Test
 	void segnalino_duplicato_e_nome_vuoto_rifiutati() throws Exception {
-		aggiungiGiocatore("Luca", Segnalini.CANE);
+		aggiungiGiocatore("Luca", Segnalino.CANE);
 		mockMvc.perform(post("/").param("nome", "Mario").param("segnalino", "CANE"))
 				.andExpect(flash().attribute("messaggio", "Il segnalino selezionato è già stato scelto."));
 		mockMvc.perform(post("/").param("nome", "  ").param("segnalino", "DINOSAURO"))
@@ -86,7 +86,7 @@ class ApiPartitaIntegrationTest {
 
 	@Test
 	void partita_con_un_solo_giocatore_non_parte() throws Exception {
-		aggiungiGiocatore("Luca", Segnalini.CANE);
+		aggiungiGiocatore("Luca", Segnalino.CANE);
 		mockMvc.perform(post("/avviaPartita"))
 				.andExpect(flash().attribute("messaggio", "Servono almeno 2 giocatori per iniziare la partita."));
 		mockMvc.perform(get("/stato")).andExpect(status().isNotFound());
@@ -161,15 +161,15 @@ class ApiPartitaIntegrationTest {
 
 	@Test
 	void segnalino_salvato_per_nome() throws Exception {
-		aggiungiGiocatore("Luca", Segnalini.CANE);
+		aggiungiGiocatore("Luca", Segnalino.CANE);
 		assertEquals("CANE", jdbcTemplate.queryForObject("SELECT segnalino FROM giocatore", String.class));
 	}
 
 	@Test
 	void ordine_dei_turni_uguale_all_ordine_di_registrazione() throws Exception {
-		aggiungiGiocatore("Sara", Segnalini.SCARPONE);
-		aggiungiGiocatore("Luca", Segnalini.CANE);
-		aggiungiGiocatore("Mario", Segnalini.MACCHINA);
+		aggiungiGiocatore("Sara", Segnalino.SCARPONE);
+		aggiungiGiocatore("Luca", Segnalino.CANE);
+		aggiungiGiocatore("Mario", Segnalino.MACCHINA);
 		mockMvc.perform(post("/avviaPartita")).andExpect(status().is3xxRedirection());
 
 		JsonNode giocatori = stato().get("giocatori");

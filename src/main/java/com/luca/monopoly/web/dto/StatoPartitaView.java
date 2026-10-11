@@ -1,4 +1,4 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web.dto;
 
 import com.luca.monopoly.domain.Asta;
 import com.luca.monopoly.domain.CalcolatoreAffitto;
@@ -104,7 +104,7 @@ public record StatoPartitaView(
                 giocatori.indexOf(partita.getGiocatoreCorrente()), vincitore, ultimaCarta,
                 partita.getCartePescate(), Partita.PORTAFOGLIO_INIZIALE, astaView, debitoView,
                 partita.getCasetteDisponibili(), partita.getAlberghiDisponibili(), Partita.MULTA_PRIGIONE,
-                giocatoriView, caselleView, new ArrayList<>(partita.getEventi()));
+                giocatoriView, caselleView, partita.getEventi());
     }
 
     /** Prezzo per le proprietà, importo da pagare per le tasse. */

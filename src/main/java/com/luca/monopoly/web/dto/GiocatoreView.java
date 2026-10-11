@@ -1,4 +1,4 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web.dto;
 
 public class GiocatoreView {
 

@@ -29,9 +29,9 @@ public class Partita {
 	private static final int MAX_DOPPI_CONSECUTIVI = 3;
 	private static final int MAX_EVENTI = 100;
 
-	/** Fasi in cui il giocatore di turno può vendere edifici e ipotecare. */
+	/** Fasi in cui si possono vendere edifici e ipotecare. */
 	private static final Set<FasePartita> FASI_DI_GESTIONE = EnumSet.of(FasePartita.LANCIO_DADI,
-			FasePartita.DECISIONE_ACQUISTO, FasePartita.FINE_TURNO, FasePartita.SALDO_DEBITO);
+			FasePartita.DECISIONE_ACQUISTO, FasePartita.FINE_TURNO, FasePartita.SALDO_DEBITO, FasePartita.ASTA);
 
 	private final Tabellone tabellone = new Tabellone();
 	private final Banca banca = new Banca();
@@ -42,7 +42,7 @@ public class Partita {
 	private final CalcolatoreAffitto calcolatoreAffitto = new CalcolatoreAffitto(tabellone);
 	private final GestoreProprieta gestoreProprieta;
 	private final Random random;
-	private final List<String> eventi = new ArrayList<>();
+	private final RegistroEventi registro = new RegistroEventi(MAX_EVENTI);
 
 	private int indiceGiocatoreCorrente;
 	private FasePartita fase = FasePartita.LANCIO_DADI;
@@ -299,43 +299,54 @@ public class Partita {
 	// ---------------------------------------------------------------------
 
 	public void costruisciCasetta(int posizione) {
-		Casella casella = verificaGestione(posizione, "Non puoi costruire mentre hai un debito da saldare.");
-		gestoreProprieta.costruisci(getGiocatoreCorrente(), casella);
+		Casella casella = verificaGestione(posizione, true);
+		gestoreProprieta.costruisci(getGiocatoreCheGestisce(), casella);
 	}
 
 	public void vendiCasetta(int posizione) {
-		Casella casella = verificaGestione(posizione, null);
-		gestoreProprieta.vendiEdificio(getGiocatoreCorrente(), casella, false);
+		Casella casella = verificaGestione(posizione, false);
+		gestoreProprieta.vendiEdificio(getGiocatoreCheGestisce(), casella, false);
 	}
 
 	public void ipoteca(int posizione) {
-		Casella casella = verificaGestione(posizione, null);
-		gestoreProprieta.ipoteca(getGiocatoreCorrente(), casella);
+		Casella casella = verificaGestione(posizione, false);
+		gestoreProprieta.ipoteca(getGiocatoreCheGestisce(), casella);
 	}
 
 	public void riscattaIpoteca(int posizione) {
-		Casella casella = verificaGestione(posizione, "Non puoi riscattare ipoteche mentre hai un debito da saldare.");
-		gestoreProprieta.riscatta(getGiocatoreCorrente(), casella);
+		Casella casella = verificaGestione(posizione, true);
+		gestoreProprieta.riscatta(getGiocatoreCheGestisce(), casella);
 	}
 
 	/**
-	 * @param erroreInSaldoDebito se non null, la mossa è vietata durante il saldo
-	 *                            di un debito (perché spende denaro)
+	 * Chi può gestire le proprie proprietà adesso: il giocatore di turno, oppure
+	 * durante un'asta chi deve offrire, che può raccogliere denaro per l'offerta.
 	 */
-	private Casella verificaGestione(int posizione, String erroreInSaldoDebito) {
+	public Giocatore getGiocatoreCheGestisce() {
+		return fase == FasePartita.ASTA ? asta.getOfferenteDiTurno() : getGiocatoreCorrente();
+	}
+
+	/**
+	 * @param spendeDenaro costruire e riscattare spendono denaro: sono vietati mentre
+	 *                     si salda un debito o si raccolgono soldi per un'asta
+	 */
+	private Casella verificaGestione(int posizione, boolean spendeDenaro) {
 		if (!FASI_DI_GESTIONE.contains(fase)) {
 			throw new MossaNonValidaException("Ora non puoi gestire le proprietà.");
 		}
-		if (fase == FasePartita.SALDO_DEBITO && erroreInSaldoDebito != null) {
-			throw new MossaNonValidaException(erroreInSaldoDebito);
+		if (spendeDenaro && fase == FasePartita.SALDO_DEBITO) {
+			throw new MossaNonValidaException("Mentre hai un debito da saldare puoi solo vendere edifici o ipotecare.");
+		}
+		if (spendeDenaro && fase == FasePartita.ASTA) {
+			throw new MossaNonValidaException("Durante l'asta puoi solo vendere edifici o ipotecare.");
 		}
 		if (posizione < 0 || posizione >= Tabellone.NUMERO_CASELLE) {
 			throw new MossaNonValidaException("Casella inesistente.");
 		}
 		Casella casella = tabellone.getCasella(posizione);
-		if (casella.getProprietario() != getGiocatoreCorrente()) {
-			throw new MossaNonValidaException(
-					casella.getTesto() + " non appartiene a " + getGiocatoreCorrente().getNome() + ".");
+		Giocatore giocatore = getGiocatoreCheGestisce();
+		if (casella.getProprietario() != giocatore) {
+			throw new MossaNonValidaException(casella.getTesto() + " non appartiene a " + giocatore.getNome() + ".");
 		}
 		return casella;
 	}
@@ -614,10 +625,7 @@ public class Partita {
 	}
 
 	private void registra(String evento) {
-		eventi.add(evento);
-		if (eventi.size() > MAX_EVENTI) {
-			eventi.remove(0);
-		}
+		registro.registra(evento);
 	}
 
 	// ---------------------------------------------------------------------
@@ -699,7 +707,7 @@ public class Partita {
 	}
 
 	public List<String> getEventi() {
-		return Collections.unmodifiableList(eventi);
+		return registro.elenco();
 	}
 
 }

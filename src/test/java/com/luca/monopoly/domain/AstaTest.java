@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class AstaTest {
 
 	private final Casella vicoloStretto = new Tabellone().getCasella(3);
-	private final Giocatore anna = new Giocatore("Anna", Segnalini.GATTO);
-	private final Giocatore luca = new Giocatore("Luca", Segnalini.CANE);
-	private final Giocatore mario = new Giocatore("Mario", Segnalini.DINOSAURO);
+	private final Giocatore anna = new Giocatore("Anna", Segnalino.GATTO);
+	private final Giocatore luca = new Giocatore("Luca", Segnalino.CANE);
+	private final Giocatore mario = new Giocatore("Mario", Segnalino.DINOSAURO);
 
 	@Test
 	void con_tre_partecipanti_i_ritiri_non_saltano_nessun_turno() {

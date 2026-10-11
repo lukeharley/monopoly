@@ -1,7 +1,8 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web;
 
 import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.service.MonopolyService;
+import com.luca.monopoly.web.dto.StatoPartitaView;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,11 +19,11 @@ import java.util.function.Consumer;
  * rifiutata con 409 (vedi {@link MonopolyService}).
  */
 @RestController
-public class AjaxHomeController {
+public class PartitaApiController {
 
     private final MonopolyService monopolyService;
 
-    public AjaxHomeController(MonopolyService monopolyService) {
+    public PartitaApiController(MonopolyService monopolyService) {
         this.monopolyService = monopolyService;
     }
 

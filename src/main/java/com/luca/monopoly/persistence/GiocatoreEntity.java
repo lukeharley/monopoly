@@ -1,6 +1,6 @@
-package com.luca.monopoly.repository;
+package com.luca.monopoly.persistence;
 
-import com.luca.monopoly.domain.Segnalini;
+import com.luca.monopoly.domain.Segnalino;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -11,7 +11,7 @@ import org.hibernate.type.SqlTypes;
  */
 @Entity
 @Table(name = "giocatore")
-public class JpaGiocatore {
+public class GiocatoreEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,7 +29,7 @@ public class JpaGiocatore {
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "segnalino", nullable = false, unique = true, length = 20)
-    private Segnalini segnalino;
+    private Segnalino segnalino;
 
     public Integer getId() {
         return id;
@@ -43,11 +43,11 @@ public class JpaGiocatore {
         this.nome = nome;
     }
 
-    public Segnalini getSegnalino() {
+    public Segnalino getSegnalino() {
         return segnalino;
     }
 
-    public void setSegnalino(Segnalini segnalino) {
+    public void setSegnalino(Segnalino segnalino) {
         this.segnalino = segnalino;
     }
 }

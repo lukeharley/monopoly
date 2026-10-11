@@ -1,7 +1,7 @@
 # Piano di review del backend Monopoly
 
 **Stato:** ✅ rivisto (Opus 5.5) — **approvato con modifiche**: vedi §7, che prevale sulle sezioni precedenti.
-**Avanzamento:** PR 1 (sicurezza e integrità) completata — E5, E1, A1-A5, E3, E4, C2, D1. PR 2 (dominio) completata — F2, C1, C4, C7, C8, C9, C10, B2, B3, D2. PR 3 (qualità) completata — C5, F1, F3, F4, F5, B1 (documentato). **Piano concluso**; restano fuori piano C3 (respinta), C6 (rinviata), D3 (facoltativa), implementazione di B1.
+**Avanzamento:** PR 1 (sicurezza e integrità) completata — E5, E1, A1-A5, E3, E4, C2, D1. PR 2 (dominio) completata — F2, C1, C4, C7, C8, C9, C10, B2, B3, D2. PR 3 (qualità) completata — C5, F1, F3, F4, F5, B1 (documentato). **Piano concluso.** Completati poi anche C6 (package `web`, `web.dto`, `persistence`; `PartitaApiController`, `GiocatoreEntity`, `Segnalino`), B1 (ipoteche durante l'asta) e D3 (`RegistroEventi`). C3 resta respinta: l'unica estrazione senza nuovo accoppiamento era il registro eventi, fatta con D3. I nomi delle classi citati nelle sezioni precedenti sono quelli in vigore al momento della review.
 **Branch analizzato:** `claude/tender-keller-j3u55n` al commit `c31479c`.
 **Perimetro:** `src/main/java/com/luca/monopoly/**`, `src/main/resources/application*.yml`, `pom.xml`, `src/test/java/com/luca/monopoly/**`. Escluso il modulo `com.luca.customscraper` e il frontend.
 

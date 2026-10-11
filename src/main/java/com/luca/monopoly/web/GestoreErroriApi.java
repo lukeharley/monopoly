@@ -1,4 +1,4 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web;
 
 import com.luca.monopoly.domain.MossaNonValidaException;
 import com.luca.monopoly.domain.PartitaAssenteException;
@@ -18,7 +18,7 @@ import java.util.Map;
  * Traduce le eccezioni dell'API JSON in risposte con un codice HTTP coerente e
  * un messaggio leggibile nel campo "errore".
  */
-@RestControllerAdvice(assignableTypes = AjaxHomeController.class)
+@RestControllerAdvice(assignableTypes = PartitaApiController.class)
 public class GestoreErroriApi {
 
     private static final Logger LOG = LoggerFactory.getLogger(GestoreErroriApi.class);

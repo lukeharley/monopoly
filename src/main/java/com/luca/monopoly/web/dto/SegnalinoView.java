@@ -1,4 +1,4 @@
-package com.luca.monopoly;
+package com.luca.monopoly.web.dto;
 
 /**
  * Un segnalino nella griglia di scelta: preso se un giocatore al tavolo lo usa già.

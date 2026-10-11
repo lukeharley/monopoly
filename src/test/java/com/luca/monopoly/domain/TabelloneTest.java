@@ -52,7 +52,7 @@ public class TabelloneTest {
 	@Test
 	void test_segnalini() {
 
-		assertEquals(8, Segnalini.values().length);
+		assertEquals(8, Segnalino.values().length);
 
 	}
 

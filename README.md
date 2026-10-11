@@ -111,7 +111,7 @@ l'offerta più alta e i suoi contanti. Con un **debito** da saldare compaiono in
 |---|---|
 | Partenza | 1500 € a testa; passando dal Via si ritirano 200 € |
 | Dadi | Due dadi; con un doppio si rilancia, al terzo doppio consecutivo si va in prigione |
-| Acquisto e asta | L'acquisto è facoltativo; se il giocatore rinuncia, la proprietà va all'asta tra tutti i giocatori (senza offerte resta alla banca) |
+| Acquisto e asta | L'acquisto è facoltativo; se il giocatore rinuncia, la proprietà va all'asta tra tutti i giocatori (senza offerte resta alla banca). Chi deve offrire può vendere edifici e ipotecare per raccogliere denaro |
 | Affitti dei terreni | Rendite ufficiali dei contratti (terreno, 1-4 case, albergo); terreno senza case a rendita doppia con il monopolio del colore |
 | Stazioni e società | Stazioni 25/50/100/200 € secondo quante se ne possiedono; società 4 volte i dadi, 10 volte con entrambe |
 | Case e alberghi | Solo con il monopolio del colore e senza terreni ipotecati nel gruppo; costruzione e vendita uniformi; scorte di 32 case e 12 alberghi; vendita alla banca a metà prezzo |
@@ -128,17 +128,23 @@ Non ancora implementati: scambi di proprietà tra giocatori, limite di tempo del
 
 ```
 src/main/java/com/luca/monopoly
-├── HomeController, AjaxHomeController   web: lobby (form) e API JSON delle mosse
-├── GestoreErroriApi                     web: eccezioni → codici HTTP
-├── StatoPartitaView                     web: fotografia JSON della partita
-├── service/                             partita condivisa, lock, versione, persistenza
-├── repository/                          giocatori registrati (JPA)
+├── Application                          avvio di Spring Boot
+├── web/                                 livello HTTP
+│   ├── HomeController                   lobby: form e redirect
+│   ├── PartitaApiController             API JSON delle mosse
+│   ├── GestoreErroriApi                 eccezioni → codici HTTP
+│   ├── ProtezioneCrossSiteFilter        protezione CSRF (Fetch Metadata / Origin)
+│   ├── HomeForm                         form della lobby con Bean Validation
+│   └── dto/                             StatoPartitaView (JSON della partita), viste della lobby
+├── service/                             partita condivisa, lock, versione; lobby
+├── persistence/                         GiocatoreEntity e GiocatoreRepository (JPA, schema Flyway)
 └── domain/                              regole del gioco, indipendenti da Spring
     ├── Partita                          turni e fasi
     ├── Asta, Debito                     asta in corso, debito da saldare
     ├── CalcolatoreAffitto               affitti
     ├── GestoreProprieta                 case, alberghi, ipoteche
-    └── Tabellone, Casella, Contratto, Mazzo, Carta, Banca, Dado, ...
+    ├── RegistroEventi                   ultimi eventi della partita
+    └── Tabellone, Casella, Contratto, Giocatore, Segnalino, Mazzo, Carta, Banca, Dado, ...
 ```
 
 Il turno è una **macchina a stati** (`FasePartita`); ogni mossa è ammessa solo nella fase giusta:
@@ -217,8 +223,6 @@ La CI di GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
 - Il server gestisce **una sola partita** alla volta, condivisa da chiunque apra il sito.
 - Non ci sono account: chi apre la pagina può muovere per il giocatore di turno (pensato per giocare insieme).
 - Con il profilo `dev` i dati sono in memoria e si perdono al riavvio.
-- Durante un'**asta** si può offrire solo fino ai contanti disponibili: chi non è di turno non può
-  ipotecare o vendere edifici per raccogliere denaro (il regolamento ufficiale lo permetterebbe).
 
 ## Fonti
 
