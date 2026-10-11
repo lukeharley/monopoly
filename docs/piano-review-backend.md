@@ -1,6 +1,6 @@
 # Piano di review del backend Monopoly
 
-**Stato:** bozza da far rivedere (Opus 5.5) prima di applicare qualsiasi modifica.
+**Stato:** ✅ rivisto (Opus 5.5) — **approvato con modifiche**: vedi §7, che prevale sulle sezioni precedenti.
 **Branch analizzato:** `claude/tender-keller-j3u55n` al commit `c31479c`.
 **Perimetro:** `src/main/java/com/luca/monopoly/**`, `src/main/resources/application*.yml`, `pom.xml`, `src/test/java/com/luca/monopoly/**`. Escluso il modulo `com.luca.customscraper` e il frontend.
 
@@ -190,3 +190,79 @@ Ordine consigliato: **1 → 3 (solo F2, come preparazione) → 2 → 3 (il resto
 - [ ] La suddivisione in 3 PR va bene, o si preferisce una sola PR?
 - [ ] C'è qualche voce da scartare perché "gusto personale" e non standard del team?
 - [ ] Manca qualcosa che il revisore considera bloccante?
+
+---
+
+## 7. Esito della review (Opus 5.5)
+
+**Verdetto: approvato con modifiche.** Tutte le 30 voci sono state ricontrollate sul codice al commit `66bee5e`. Tre ipotesi sono state verificate eseguendo l'applicazione:
+
+| Verifica pratica | Esito |
+|---|---|
+| `mvn spring-boot:run -Dspring-boot.run.profiles=dev` (il comando avviato dal devcontainer), poi `GET /h2-console/` | **200, pagina "H2 Console"**: console esposta |
+| `POST /resettaPartita` con `Origin: https://sito-malevolo.example` | **302**: partita resettata da un'origine esterna |
+| Rimossi `AppConfig` e `allow-bean-definition-overriding`, poi `ApiPartitaIntegrationTest` | **8/8 verdi**: entrambi superflui |
+
+### 7.1 Nuova voce (mancava nel piano)
+
+**E5 🔴 Console H2 raggiungibile da Internet nel Codespace** — `application-dev.yml`, `pom.xml:47` (devtools), `.devcontainer/devcontainer.json`
+Con `spring-boot:run` devtools è attivo e abilita per default `/h2-console`. Il port forwarding dei Codespaces si collega da `localhost`, quindi il controllo "solo connessioni locali" di H2 non protegge. Con la porta 8080 **Public** (come indicato nel README per giocare in più persone), chiunque abbia il link apre la console con utente `sa` e password vuota, esegue SQL arbitrario e, con `CREATE ALIAS`, codice Java nel container. Non serve nessun bug: è una funzione documentata di H2.
+*Fix:* `spring.h2.console.enabled: false` esplicito in `application-dev.yml` (una proprietà esplicita prevale sui default di devtools) e un test d'integrazione che verifica che `/h2-console` non sia raggiungibile. — **S**
+
+### 7.2 Esito per voce
+
+Legenda: ✅ confermata · ✏️ confermata con correzioni · ⏸ rinviata · ❌ respinta.
+
+| Voce | Esito | Gravità | Note del revisore |
+|---|---|---|---|
+| A1 | ✅ | 🔴 | Confermata (nessun `@Enumerated`, quindi ORDINAL). Su MySQL esistente la colonna resta INT: inserire `'CANE'` fallirebbe. La migrazione è obbligatoria (vedi E4). |
+| A2 | ✏️ | 🔴→🟠 | Contratto JPA non garantito, ma su InnoDB e H2 l'ordine coincide in pratica con la chiave primaria. Rischio latente, fix banale. |
+| A3 | ✏️ | 🔴→🟠 | Finestra reale ma richiede due clic quasi simultanei. **Da aggiungere:** due registrazioni simultanee con lo stesso segnalino superano entrambe `findBySegnalino` e la seconda viola il vincolo `unique`. La `DataIntegrityViolationException` non è gestita e produce una pagina 500. Fix: registrazione dentro il lock di `MonopolyService` e conversione della violazione in messaggio. |
+| A4 | ✅ | 🟠 | Confermato che lo stato salvato non viene mai riletto (`avviaPartita` riparte da 1500 €). Decisione (a). |
+| A5 | ✅ | 🟡 | Si risolve con A4(a). |
+| B1 | ✏️ | 🟠→🟡 | Corretta come regola, ma vale per *qualsiasi* giocatore non di turno, non solo nell'asta. ⏸ Rinviata: documentare il limite nel README. |
+| B2 | ✅ | 🟡 | Aggiornare `MonopolyTest.java:83-84`, che verifica i campi da eliminare. |
+| B3 | ✏️ | 🟡 | Solo registrare l'annullamento nel registro eventi: vietare la chiusura non va bene, perché "Termina partita" deve funzionare sempre. |
+| C1 | ✏️ | 🟠 | **Errore nel piano:** `Giocatore` è in `domain.giocatore` e `Partita` in `domain`, quindi la visibilità package-private non funziona. Spostare `Giocatore` in `domain` (il sottopackage contiene solo quella classe). `Giocatore.setNome/setSegnalino` non sono usati in produzione: eliminarli. Prerequisito: F2. |
+| C2 | ✏️ | 🟠 | **Corretta l'affermazione:** `AppConfig` non richiede l'override dei bean; verificato che si possono rimuovere entrambi. Eliminando `Casetta`/`Albergo`, i test `test_casette`/`test_alberghi` passano a verificare le costanti di `Banca`. |
+| C3 | ❌ | — | I metodi sono brevi (quasi tutti < 30 righe). Estrarre carte e bancarotta richiede un'interfaccia di callback sullo stato del turno (fase, debito, passaggio turno) e *aumenta* l'accoppiamento. Da rivalutare dopo C1, C7, C9 e B2, che riducono le dimensioni. |
+| C4 | ✏️ | 🟡 | **Corretta la descrizione:** `Random` è già iniettabile (`Partita(List, Random, boolean)`). Il problema reale è `lanciaDadi(int, int)` pubblico con `IllegalArgumentException`. |
+| C5 | ✅ | 🟡 | Il template deve passare dai valori ordinali ai nomi dell'enum. |
+| C6 | ⏸ | — | Molti file toccati, poco valore. Eventualmente in una PR a parte, dopo le altre. |
+| C7 | ✅ | 🟡 | |
+| C8 | ✅ | 🟡 | Il JSON deve mantenere i nomi minuscoli: il frontend li usa come chiavi (`COLORI_TERRENI`). |
+| C9 | ✅ | 🟡 | Enum, non `Runnable`: lo stato deve restare osservabile e serializzabile. |
+| C10 | ✅ | 🟡 | |
+| D1 | ✏️ | 🟠 | **Più grave del previsto:** `/stato` costruisce l'intera vista *anche quando poi risponde 204*, perché il confronto della versione avviene dopo. Prima fix: controllare la versione prima di costruire la vista. Cache facoltativa. |
+| D2 | ✅ | 🟡 | Facoltativa. |
+| D3 | ✏️ | 🟡 | Facoltativa: con 100 elementi la differenza non è misurabile. |
+| E1 | ✅ | 🔴 | Verificata. **Correzione:** il suggerimento `same-site: strict` è inutile, perché gli endpoint non dipendono da cookie. La protezione è il filtro su `Origin`/`Sec-Fetch-Site`. |
+| E2 | ✅ | — | Per scelta progettuale: resta un limite documentato. |
+| E3 | ✏️ | 🟡 | Rischio quasi nullo (senza validatori non c'è caching euristico), ma `no-store` costa una riga. |
+| E4 | ✏️ | 🟠 | La parte H2 diventa E5 🔴. **Correzione:** devtools *non* finisce nel jar di produzione (`optional` ed escluso dal repackage). Restano `ddl-auto: update` e il default `DB_USERNAME=luke`, da rimuovere. |
+| F1 | ✅ | 🟠 | Verificato sui nomi dei 30 test di `PartitaTest`: mancano tutti i casi elencati. |
+| F2 | ✅ | 🟠 | Prerequisito di C1. |
+| F3 | ✅ | 🟡 | |
+| F4 | ✅ | 🟡 | |
+| F5 | ✅ | 🟡 | Soglia iniziale ragionevole: 80 % sul package `domain`. |
+
+**Riepilogo:** 31 voci (30 + E5). 🔴 rivisti: **A1, E1, E5**. Respinte: C3. Rinviate: B1 (solo documentazione), C6. Facoltative: D2, D3.
+
+### 7.3 Risposte alle decisioni del §4
+
+1. **A4/A5:** opzione (a). Si elimina `salvaStato` e il DB conserva solo la lobby (nome + segnalino).
+2. **B1:** si documenta il limite nel README; implementazione rinviata.
+3. **E2:** resta "stesso tavolo", limite dichiarato.
+4. **E1:** filtro leggero su `Origin`/`Sec-Fetch-Site`. Spring Security non serve, perché non c'è autenticazione da proteggere.
+5. **E4:** Flyway sì. Con A4(a) lo schema è una sola tabella: `V1` la ricrea con `segnalino VARCHAR` (i dati della lobby sono temporanei, quindi non c'è nulla da migrare) e `ddl-auto: validate`.
+6. **C6:** nessuna rinomina ora.
+
+### 7.4 Piano di esecuzione rivisto
+
+| PR | Contenuto, in ordine | Sforzo |
+|---|---|---|
+| **1 – Sicurezza e integrità** | E5 → E1 → A1 + E4 (Flyway, `validate`) → A4/A5 → A2 → A3 (+ vincolo unique) → C2 → D1 (risposta 204 senza costruire la vista) → E3 | ½ giornata |
+| **2 – Dominio** | F2 (test nel package `domain` + `ScenarioPartita`) → C1 (+ spostamento di `Giocatore`) → C4 → C7 → C8 → C9 → C10 → B2 → B3 → D2 | 1 giornata |
+| **3 – Qualità** | C5 → F1 → F3 → F4 → F5 → B1 (README) | ½ giornata |
+
+Criterio di accettazione per ogni PR: `mvn verify` verde, nessuna regressione nel giro di prova end-to-end nel browser, e per PR 1 un test d'integrazione dedicato a ciascuna voce 🔴 (console H2 non raggiungibile, POST cross-origin rifiutato con 403, segnalino salvato come stringa).
