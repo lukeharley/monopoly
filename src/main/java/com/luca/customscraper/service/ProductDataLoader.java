@@ -16,7 +16,7 @@ public class ProductDataLoader {
     if (lines.isEmpty()) {
       return List.of();
     }
-    List<String> headers = CsvLineParser.parseLine(lines.getFirst());
+    List<String> headers = CsvLineParser.parseLine(lines.get(0));
     List<ProductData> products = new ArrayList<>();
     for (int i = 1; i < lines.size(); i++) {
       List<String> values = CsvLineParser.parseLine(lines.get(i));

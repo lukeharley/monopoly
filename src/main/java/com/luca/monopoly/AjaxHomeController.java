@@ -1,63 +1,95 @@
 package com.luca.monopoly;
 
-import com.luca.monopoly.domain.*;
-import com.luca.monopoly.domain.giocatore.Giocatore;
-import com.luca.monopoly.domain.giocatore.GiocatoreRisultato;
-import com.luca.monopoly.service.GiocatoreService;
+import com.luca.monopoly.domain.MossaNonValidaException;
+import com.luca.monopoly.domain.Partita;
 import com.luca.monopoly.service.MonopolyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @RestController
 public class AjaxHomeController {
 
     @Autowired
-    private GiocatoreService giocatoreService;
-
-    @Autowired
     private MonopolyService monopolyService;
 
+    @GetMapping("/stato")
+    public ResponseEntity<StatoPartitaView> stato() {
+        Partita partita = monopolyService.getPartita();
+        if (partita == null) {
+            throw new MossaNonValidaException("Nessuna partita in corso.");
+        }
+        return ResponseEntity.ok(StatoPartitaView.da(partita));
+    }
+
     @PostMapping("/lanciaDadi")
-    public ResponseEntity<Map<String, Object>> lanciaDadi() {
+    public ResponseEntity<StatoPartitaView> lanciaDadi() {
+        return esegui(Partita::lanciaDadi);
+    }
 
-        Monopoly monopoly = monopolyService.getMonopoly();
+    @PostMapping("/compraProprieta")
+    public ResponseEntity<StatoPartitaView> compraProprieta() {
+        return esegui(Partita::compraProprieta);
+    }
 
-        List<Giocatore> giocatori = monopoly.getGiocatori();
+    @PostMapping("/rifiutaAcquisto")
+    public ResponseEntity<StatoPartitaView> rifiutaAcquisto() {
+        return esegui(Partita::rifiutaAcquisto);
+    }
 
-        /*
-         * Giocatore giocatore1 = giocatori.get(0);
-         * Giocatore giocatore2 = giocatori.get(1);
-         */
+    @PostMapping("/fineTurno")
+    public ResponseEntity<StatoPartitaView> fineTurno() {
+        return esegui(Partita::fineTurno);
+    }
 
-        Giocatore giocatoreCorrente = giocatori.get(0);
+    @PostMapping("/pagaUscitaDiPrigione")
+    public ResponseEntity<StatoPartitaView> pagaUscitaDiPrigione() {
+        return esegui(Partita::pagaUscitaDiPrigione);
+    }
 
-        Tabellone tabellone = monopoly.getTabellone();
-        List<Casella> caselle = tabellone.getCaselle();
-        List<Contratto> contratti = tabellone.getContratti();
-        Map<String, Giocatore> proprietariDeiContratti = tabellone.getProprietariDeiContratti();
-        List<Probabilita> probabilita = tabellone.getProbabilita();
-        List<Imprevisto> imprevisti = tabellone.getImprevisti();
+    @PostMapping("/usaCartaUscitaDiPrigione")
+    public ResponseEntity<StatoPartitaView> usaCartaUscitaDiPrigione() {
+        return esegui(Partita::usaCartaUscitaDiPrigione);
+    }
 
-        Map<String, Object> response = new HashMap<>();
+    @PostMapping("/costruisciCasetta/{posizione}")
+    public ResponseEntity<StatoPartitaView> costruisciCasetta(@PathVariable int posizione) {
+        return esegui(partita -> partita.costruisciCasetta(posizione));
+    }
 
-        int risultatoDado = giocatoreService.ottieniRisultatoDado();
-        GiocatoreRisultato giocatoreRisultato = giocatoreService.ottieniNuovaPosizioneENuovoPortafoglio(
-                risultatoDado, proprietariDeiContratti, caselle, contratti, imprevisti,
-                probabilita, giocatoreCorrente);
+    @PostMapping("/vendiCasetta/{posizione}")
+    public ResponseEntity<StatoPartitaView> vendiCasetta(@PathVariable int posizione) {
+        return esegui(partita -> partita.vendiCasetta(posizione));
+    }
 
-        response.put("result", "Dadi lanciati con successo!");
-        response.put("risultatoDado", risultatoDado);
-        response.put("posizione", giocatoreRisultato.getNuovaPosizione());
-        response.put("portafoglio", giocatoreRisultato.getNuovoPortafoglio());
-        response.put("bancarotta", giocatoreRisultato.isInBancarotta());
+    @PostMapping("/ipoteca/{posizione}")
+    public ResponseEntity<StatoPartitaView> ipoteca(@PathVariable int posizione) {
+        return esegui(partita -> partita.ipoteca(posizione));
+    }
 
-        return ResponseEntity.ok(response);
+    @PostMapping("/riscattaIpoteca/{posizione}")
+    public ResponseEntity<StatoPartitaView> riscattaIpoteca(@PathVariable int posizione) {
+        return esegui(partita -> partita.riscattaIpoteca(posizione));
+    }
 
+    @PostMapping("/terminaPartita")
+    public ResponseEntity<StatoPartitaView> terminaPartita() {
+        return esegui(Partita::terminaPartita);
+    }
+
+    @ExceptionHandler(MossaNonValidaException.class)
+    public ResponseEntity<Map<String, String>> mossaNonValida(MossaNonValidaException eccezione) {
+        return ResponseEntity.badRequest().body(Map.of("errore", eccezione.getMessage()));
+    }
+
+    private ResponseEntity<StatoPartitaView> esegui(Consumer<Partita> mossa) {
+        return ResponseEntity.ok(StatoPartitaView.da(monopolyService.esegui(mossa)));
     }
 }

@@ -2,12 +2,12 @@ package com.luca.monopoly.domain;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
-import com.luca.monopoly.domain.giocatore.Giocatore;
+import java.util.stream.Collectors;
 
 public class Tabellone {
+
+	public static final int NUMERO_CASELLE = 40;
+	public static final int POSIZIONE_PRIGIONE = 10;
 
 	private final int NUMERO_MAX_PEZZI_CASETTA = 32;
 	private final int NUMERO_MAX_PEZZI_ALBERGO = 12;
@@ -16,50 +16,49 @@ public class Tabellone {
 	private final List<Casella> caselle = new ArrayList<>();
 	private final List<Imprevisto> imprevisti = new ArrayList<>();
 	private final List<Probabilita> probabilita = new ArrayList<>();
-	private TreeMap<String, Giocatore> proprietariDeiContratti = new TreeMap<>();
 
 	public Tabellone() {
 
-		caselle.add(new Casella("Via", false, null, 0, 0));
-		caselle.add(new Casella("Vicolo Corto", true, "fucsia", 60, 0));
-		caselle.add(new Casella("Probabilità", false, null, 0, 0));
-		caselle.add(new Casella("Vicolo Stretto", true, "fucsia", 60, 0));
-		caselle.add(new Casella("Tassa Patrimoniale", false, null, 0, 0));
-		caselle.add(new Casella("Stazione Sud", false, null, 200, 0));
-		caselle.add(new Casella("Bastioni Gran Sasso", true, "azzurro", 100, 0));
-		caselle.add(new Casella("Imprevisti", false, null, 0, 0));
-		caselle.add(new Casella("Viale Monterosa", true, "azzurro", 100, 0));
-		caselle.add(new Casella("Viale Vesuvio", true, "azzurro", 120, 0));
-		caselle.add(new Casella("Prigione/Transito", false, null, 0, 0));
-		caselle.add(new Casella("Via Accademia", true, "arancione", 140, 0));
-		caselle.add(new Casella("Società Elettrica", false, null, 150, 0));
-		caselle.add(new Casella("Corso Ateneo", true, "arancione", 140, 0));
-		caselle.add(new Casella("Piazza Università", true, "arancione", 160, 0));
-		caselle.add(new Casella("Stazione Ovest", false, null, 200, 0));
-		caselle.add(new Casella("Via Verdi", true, "marrone", 180, 0));
-		caselle.add(new Casella("Probabilità", false, null, 0, 0));
-		caselle.add(new Casella("Corso Raffaello", true, "marrone", 180, 0));
-		caselle.add(new Casella("Piazza Dante", true, "marrone", 200, 0));
-		caselle.add(new Casella("Posteggio Gratuito", false, null, 0, 0));
-		caselle.add(new Casella("Via Marco Polo", true, "rosso", 220, 0));
-		caselle.add(new Casella("Imprevisti", false, null, 0, 0));
-		caselle.add(new Casella("Corso Magellano", true, "rosso", 220, 0));
-		caselle.add(new Casella("Largo Colombo", true, "rosso", 240, 0));
-		caselle.add(new Casella("Stazione Nord", false, null, 200, 0));
-		caselle.add(new Casella("Viale Costantino", true, "giallo", 260, 0));
-		caselle.add(new Casella("Viale Traiano", true, "giallo", 260, 0));
-		caselle.add(new Casella("Società Acqua Potabile", false, null, 150, 0));
-		caselle.add(new Casella("Piazza Giulio Cesare", true, "giallo", 280, 0));
-		caselle.add(new Casella("In prigione!", false, null, 0, 0));
-		caselle.add(new Casella("Via Roma", true, "verde", 300, 0));
-		caselle.add(new Casella("Corso Impero", true, "verde", 300, 0));
-		caselle.add(new Casella("Probabilità", false, null, 0, 0));
-		caselle.add(new Casella("Largo Augusto", true, "verde", 320, 0));
-		caselle.add(new Casella("Stazione Est", false, null, 200, 0));
-		caselle.add(new Casella("Imprevisti", false, null, 0, 0));
-		caselle.add(new Casella("Viale dei Giardini", true, "viola", 350, 0));
-		caselle.add(new Casella("Tassa di Lusso", false, null, 0, 0));
-		caselle.add(new Casella("Parco della Vittoria", true, "viola", 400, 0));
+		caselle.add(new Casella("Via", TipoCasella.VIA));
+		caselle.add(terreno("Vicolo Corto", "fucsia", 60));
+		caselle.add(new Casella("Probabilità", TipoCasella.PROBABILITA));
+		caselle.add(terreno("Vicolo Stretto", "fucsia", 60));
+		caselle.add(new Casella("Tassa Patrimoniale", TipoCasella.TASSA, null, 200, 0));
+		caselle.add(new Casella("Stazione Sud", TipoCasella.STAZIONE, null, 200, 0));
+		caselle.add(terreno("Bastioni Gran Sasso", "azzurro", 100));
+		caselle.add(new Casella("Imprevisti", TipoCasella.IMPREVISTI));
+		caselle.add(terreno("Viale Monterosa", "azzurro", 100));
+		caselle.add(terreno("Viale Vesuvio", "azzurro", 120));
+		caselle.add(new Casella("Prigione/Transito", TipoCasella.PRIGIONE));
+		caselle.add(terreno("Via Accademia", "arancione", 140));
+		caselle.add(new Casella("Società Elettrica", TipoCasella.SOCIETA, null, 150, 0));
+		caselle.add(terreno("Corso Ateneo", "arancione", 140));
+		caselle.add(terreno("Piazza Università", "arancione", 160));
+		caselle.add(new Casella("Stazione Ovest", TipoCasella.STAZIONE, null, 200, 0));
+		caselle.add(terreno("Via Verdi", "marrone", 180));
+		caselle.add(new Casella("Probabilità", TipoCasella.PROBABILITA));
+		caselle.add(terreno("Corso Raffaello", "marrone", 180));
+		caselle.add(terreno("Piazza Dante", "marrone", 200));
+		caselle.add(new Casella("Posteggio Gratuito", TipoCasella.POSTEGGIO));
+		caselle.add(terreno("Via Marco Polo", "rosso", 220));
+		caselle.add(new Casella("Imprevisti", TipoCasella.IMPREVISTI));
+		caselle.add(terreno("Corso Magellano", "rosso", 220));
+		caselle.add(terreno("Largo Colombo", "rosso", 240));
+		caselle.add(new Casella("Stazione Nord", TipoCasella.STAZIONE, null, 200, 0));
+		caselle.add(terreno("Viale Costantino", "giallo", 260));
+		caselle.add(terreno("Viale Traiano", "giallo", 260));
+		caselle.add(new Casella("Società Acqua Potabile", TipoCasella.SOCIETA, null, 150, 0));
+		caselle.add(terreno("Piazza Giulio Cesare", "giallo", 280));
+		caselle.add(new Casella("In prigione!", TipoCasella.VAI_IN_PRIGIONE));
+		caselle.add(terreno("Via Roma", "verde", 300));
+		caselle.add(terreno("Corso Impero", "verde", 300));
+		caselle.add(new Casella("Probabilità", TipoCasella.PROBABILITA));
+		caselle.add(terreno("Largo Augusto", "verde", 320));
+		caselle.add(new Casella("Stazione Est", TipoCasella.STAZIONE, null, 200, 0));
+		caselle.add(new Casella("Imprevisti", TipoCasella.IMPREVISTI));
+		caselle.add(terreno("Viale dei Giardini", "viola", 350));
+		caselle.add(new Casella("Tassa di Lusso", TipoCasella.TASSA, null, 100, 0));
+		caselle.add(terreno("Parco della Vittoria", "viola", 400));
 
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
 		contratti.add(new Contratto("Vicolo Corto", 2, 10, 0, 0));
@@ -102,125 +101,90 @@ public class Tabellone {
 		contratti.add(new Contratto("Segnaposto", 0, 0, 0, 0));
 		contratti.add(new Contratto("Parco della Vittoria", 50, 200, 0, 0));
 
-		// prettier-ignore
-		imprevisti
-				.add(new Imprevisto("Andate sino al Largo Colombo: se passate dal Via ritirate 500 euro.", 0, "24", 0));
-		imprevisti.add(new Imprevisto("Andate in Prigione direttamente e senza passare dal Via.", 0, "30", 0));
-		imprevisti.add(new Imprevisto("Avete tutti i vostri stabili da riparare: pagare 180 euro.", -180, "NaN", 0));
-		/*
-		 * da implementare, sostituito con imprevisto precedente in attesa di gestire il
-		 * numero di case o alberghi posseduti:
-		 * imprevisti.add(new Imprevisto(
-		 * "Avete tutti i vostri stabili da riparare: pagare 60 euro per ogni Casa e 250 euro per ogni Albergo."
-		 * , 60 / 250,
-		 * "NaN", 0));
-		 */
-		imprevisti.add(new Imprevisto("Fate 3 passi indietro (con tanti auguri).", 0, "NaN", -3));
-		imprevisti
-				.add(new Imprevisto("Andate sino a Via Accademia: se passate dal Via ritirate 500 euro.", 0, "11", 0));
-		imprevisti.add(new Imprevisto("Versate 50 euro per beneficienza.", -50, "NaN", 0));
-		imprevisti.add(new Imprevisto("Andate alla Stazione Nord: se passate dal Via ritirate 500 euro.", 0, "25", 0));
-		imprevisti.add(new Imprevisto("Multa di 40 euro per aver guidato senza patente.", -40, "NaN", 0));
-		imprevisti.add(new Imprevisto("Andate fino al Parco della Vittoria. Ritirate 200 euro.", 200, "39", 0));
-		imprevisti.add(new Imprevisto("Matrimonio in famiglia: spese impreviste 375 euro.", -375, "NaN", 0));
-		imprevisti.add(new Imprevisto("Matrimonio in famiglia: spese impreviste 280 euro.", -280, "NaN", 0));
-		/*
-		 * da implementare, sostituito con imprevisto precedente in attesa di gestire
-		 * l'uscita di prigione
-		 * imprevisti.add(new Imprevisto(
-		 * "Uscite gratis di prigione, se ci siete: potete conservare questo cartoncino sino al momento di servirvene (non si sa mai!) oppure venderlo."
-		 * ,
-		 * 0, "NaN", 0));
-		 */
-		imprevisti.add(
-				new Imprevisto("Maturano le cedole delle vostre cartelle di rendita, ritirate 375 euro.", 375, "NaN",
-						0));
-		imprevisti.add(
-				new Imprevisto("La banca vi paga gli interessi del vostro conto corrente, ritirate 125 euro.", 125,
-						"NaN",
-						0));
-		imprevisti.add(new Imprevisto("Andate avanti sino al Via.", 500, "0", 0));
-		imprevisti.add(new Imprevisto("Avete vinto un terno al lotto: ritirate 250 euro.", 250, "NaN", 0));
-		imprevisti.add(new Imprevisto("Andate in prigione direttamente e senza passare dal Via.", 0, "30", 0));
+		imprevisti.add(new Imprevisto("Andate sino al Largo Colombo: se passate dal Via ritirate 200 euro.",
+				EffettoCarta.VAI_A, 24));
+		imprevisti.add(new Imprevisto("Andate in prigione direttamente e senza passare dal Via.",
+				EffettoCarta.VAI_IN_PRIGIONE));
+		imprevisti.add(new Imprevisto(
+				"Avete tutti i vostri stabili da riparare: pagate 60 euro per ogni casa e 250 euro per ogni albergo.",
+				EffettoCarta.RIPARAZIONI, 60, 250));
+		imprevisti.add(new Imprevisto("Fate 3 passi indietro (con tanti auguri).", EffettoCarta.SPOSTA, -3));
+		imprevisti.add(new Imprevisto("Andate sino a Via Accademia: se passate dal Via ritirate 200 euro.",
+				EffettoCarta.VAI_A, 11));
+		imprevisti.add(new Imprevisto("Versate 50 euro per beneficenza.", EffettoCarta.PAGA, 50));
+		imprevisti.add(new Imprevisto("Andate alla Stazione Nord: se passate dal Via ritirate 200 euro.",
+				EffettoCarta.VAI_A, 25));
+		imprevisti.add(new Imprevisto("Multa di 40 euro per aver guidato senza patente.", EffettoCarta.PAGA, 40));
+		imprevisti.add(new Imprevisto("Andate fino al Parco della Vittoria.", EffettoCarta.VAI_A, 39));
+		imprevisti.add(new Imprevisto("Matrimonio in famiglia: spese impreviste 375 euro.", EffettoCarta.PAGA, 375));
+		imprevisti.add(new Imprevisto(
+				"Uscite gratis di prigione, se ci siete: potete conservare questo cartoncino sino al momento di servirvene (non si sa mai!).",
+				EffettoCarta.ESCI_GRATIS_DI_PRIGIONE));
+		imprevisti.add(new Imprevisto("Maturano le cedole delle vostre cartelle di rendita, ritirate 375 euro.",
+				EffettoCarta.INCASSA, 375));
+		imprevisti.add(new Imprevisto("La banca vi paga gli interessi del vostro conto corrente, ritirate 125 euro.",
+				EffettoCarta.INCASSA, 125));
+		imprevisti.add(new Imprevisto("Andate avanti sino al Via.", EffettoCarta.VAI_A, 0));
+		imprevisti.add(new Imprevisto("Avete vinto un terno al lotto: ritirate 250 euro.", EffettoCarta.INCASSA, 250));
+		imprevisti.add(new Imprevisto("Andate in prigione direttamente e senza passare dal Via.",
+				EffettoCarta.VAI_IN_PRIGIONE));
 
-		probabilita.add(new Probabilita("Ritornate al Vicolo Corto.", 0, "1", 0));
-		probabilita.add(new Probabilita("È maturata la cedola delle vostre azioni: ritirate 60 euro.", 60, "NaN", 0));
-		probabilita.add(new Probabilita("Rimborso tassa sul reddito: ritirate 50 euro dalla banca.", 50, "NaN", 0));
-		probabilita
-				.add(new Probabilita("Avete vinto il secondo premio in un concorso di bellezza: ritirate 25 euro.", 25,
-						"NaN", 0));
-		probabilita.add(new Probabilita("Scade il vostro premio di assicurazione: pagate 125 euro.", -125, "NaN", 0));
-		probabilita.add(new Probabilita("Dalla vendita di uno stock di merci ricavate 50 euro.", 50, "NaN", 0));
-		/*
-		 * da implementare, sostituito con probabilità precedente in attesa di gestire
-		 * l'uscita di prigione
-		 * probabilita.add(new Probabilita(
-		 * "Uscite gratis di prigione, se ci siete: potete conservare questo cartoncino sino al momento di servirvene(non si sa mai!) oppure venderlo."
-		 * ,
-		 * 0, "NaN", 0));
-		 */
-		probabilita.add(
-				new Probabilita("Avete vinto un premio di consolazione alla lotteria di Merano: ritirate 250 euro.",
-						250, "NaN", 0));
-		probabilita.add(new Probabilita("Andate fino al Via.", 0, "0", 0));
-		// seconda parte ancora da implementare
-		probabilita
-				.add(new Probabilita("Pagate una multa di 25 euro (oppure pescate una carta Imprevisti)", -25, "NaN",
-						0));
-		probabilita.add(new Probabilita("Siete creditori verso la banca di 500 euro, ritirateli.", 500, "NaN", 0));
-		probabilita.add(new Probabilita("Avete perso una causa: pagate 250 euro", -250, "NaN", 0));
-		probabilita.add(new Probabilita("Andate in prigione direttamente e senza passare dal Via.", 0, "30", 0));
-		probabilita.add(new Probabilita("Vi viene rimborsata la tassa sui redditi. Incassate 20 euro", 20, "NaN", 0));
-		probabilita.add(new Probabilita("Avete perso una causa: pagate 150 euro", -150, "NaN", 0));
-		/*
-		 * da implementare, sostituito con probabilità precedente in attesa di gestire
-		 * il
-		 * numero di case o alberghi posseduti:
-		 * probabilita.add(new Probabilita(
-		 * "Dovete pagare un contributo di miglioria stradale, 100 euro per ogni Casa, 250 euro per ogni Albergo che possedete."
-		 * ,
-		 * (100 * 1) + (250 * 1), "NaN", 0));
-		 */
-		probabilita.add(new Probabilita("Avete ceduto delle azioni: ricavate 125 euro.", 125, "NaN", 0));
-		probabilita.add(new Probabilita("Pagate il conto del dottore: 125 euro.", -125, "NaN", 0));
+		probabilita.add(new Probabilita("Ritornate al Vicolo Corto.", EffettoCarta.TORNA_A, 1));
+		probabilita.add(new Probabilita("È maturata la cedola delle vostre azioni: ritirate 60 euro.",
+				EffettoCarta.INCASSA, 60));
+		probabilita.add(new Probabilita("Rimborso tassa sul reddito: ritirate 50 euro dalla banca.",
+				EffettoCarta.INCASSA, 50));
+		probabilita.add(new Probabilita("Avete vinto il secondo premio in un concorso di bellezza: ritirate 25 euro.",
+				EffettoCarta.INCASSA, 25));
+		probabilita.add(new Probabilita("Scade il vostro premio di assicurazione: pagate 125 euro.",
+				EffettoCarta.PAGA, 125));
+		probabilita.add(new Probabilita(
+				"Uscite gratis di prigione, se ci siete: potete conservare questo cartoncino sino al momento di servirvene (non si sa mai!).",
+				EffettoCarta.ESCI_GRATIS_DI_PRIGIONE));
+		probabilita.add(new Probabilita("Avete vinto un premio di consolazione alla lotteria di Merano: ritirate 250 euro.",
+				EffettoCarta.INCASSA, 250));
+		probabilita.add(new Probabilita("Andate fino al Via.", EffettoCarta.VAI_A, 0));
+		probabilita.add(new Probabilita("Pagate una multa di 25 euro.", EffettoCarta.PAGA, 25));
+		probabilita.add(new Probabilita("Siete creditori verso la banca di 500 euro, ritirateli.",
+				EffettoCarta.INCASSA, 500));
+		probabilita.add(new Probabilita("Avete perso una causa: pagate 250 euro.", EffettoCarta.PAGA, 250));
+		probabilita.add(new Probabilita("Andate in prigione direttamente e senza passare dal Via.",
+				EffettoCarta.VAI_IN_PRIGIONE));
+		probabilita.add(new Probabilita("Vi viene rimborsata la tassa sui redditi: incassate 20 euro.",
+				EffettoCarta.INCASSA, 20));
+		probabilita.add(new Probabilita(
+				"Dovete pagare un contributo di miglioria stradale: 100 euro per ogni casa, 250 euro per ogni albergo che possedete.",
+				EffettoCarta.RIPARAZIONI, 100, 250));
+		probabilita.add(new Probabilita("Avete ceduto delle azioni: ricavate 125 euro.", EffettoCarta.INCASSA, 125));
+		probabilita.add(new Probabilita("Pagate il conto del dottore: 125 euro.", EffettoCarta.PAGA, 125));
 
-		proprietariDeiContratti.put("Vicolo Corto", null);
-		proprietariDeiContratti.put("Vicolo Stretto", null);
-		proprietariDeiContratti.put("Stazione Sud", null);
-		proprietariDeiContratti.put("Bastioni Gran Sasso", null);
-		proprietariDeiContratti.put("Viale Monterosa", null);
-		proprietariDeiContratti.put("Viale Vesuvio", null);
-		proprietariDeiContratti.put("Via Accademia", null);
-		proprietariDeiContratti.put("Società Elettrica", null);
-		proprietariDeiContratti.put("Corso Ateneo", null);
-		proprietariDeiContratti.put("Piazza Università", null);
-		proprietariDeiContratti.put("Stazione Ovest", null);
-		proprietariDeiContratti.put("Via Verdi", null);
-		proprietariDeiContratti.put("Corso Raffaello", null);
-		proprietariDeiContratti.put("Piazza Dante", null);
-		proprietariDeiContratti.put("Via Marco Polo", null);
-		proprietariDeiContratti.put("Corso Magellano", null);
-		proprietariDeiContratti.put("Largo Colombo", null);
-		proprietariDeiContratti.put("Stazione Nord", null);
-		proprietariDeiContratti.put("Viale Costantino", null);
-		proprietariDeiContratti.put("Viale Traiano", null);
-		proprietariDeiContratti.put("Società Acqua Potabile", null);
-		proprietariDeiContratti.put("Piazza Giulio Cesare", null);
-		proprietariDeiContratti.put("Via Roma", null);
-		proprietariDeiContratti.put("Corso Impero", null);
-		proprietariDeiContratti.put("Largo Augusto", null);
-		proprietariDeiContratti.put("Stazione Est", null);
-		proprietariDeiContratti.put("Viale dei Giardini", null);
-		proprietariDeiContratti.put("Parco della Vittoria", null);
+	}
 
+	/*
+	 * Il costo di una casetta dipende dal lato del tabellone su cui si trova il
+	 * terreno: 50 euro per il primo lato, 100 per il secondo, 150 per il terzo e
+	 * 200 per il quarto.
+	 */
+	private Casella terreno(String testo, String colore, int costoProprieta) {
+		int lato = caselle.size() / 10;
+		int costoCasetta = (lato + 1) * 50;
+		return new Casella(testo, TipoCasella.TERRENO, colore, costoProprieta, costoCasetta);
 	}
 
 	public List<Casella> getCaselle() {
 		return caselle;
 	}
 
+	public Casella getCasella(int posizione) {
+		return caselle.get(posizione);
+	}
+
 	public List<Contratto> getContratti() {
 		return contratti;
+	}
+
+	public Contratto getContratto(int posizione) {
+		return contratti.get(posizione);
 	}
 
 	public List<Imprevisto> getImprevisti() {
@@ -231,12 +195,16 @@ public class Tabellone {
 		return probabilita;
 	}
 
-	public Map<String, Giocatore> getProprietariDeiContratti() {
-		return proprietariDeiContratti;
+	public List<Casella> getCaselleDelColore(String colore) {
+		return caselle.stream()
+				.filter(casella -> casella.getColore() != null && casella.getColore().equals(colore))
+				.collect(Collectors.toList());
 	}
 
-	public void setProprietariDeiContratti(TreeMap<String, Giocatore> proprietariDeiContratti) {
-		this.proprietariDeiContratti = proprietariDeiContratti;
+	public List<Casella> getCaselleDelTipo(TipoCasella tipo) {
+		return caselle.stream()
+				.filter(casella -> casella.getTipo() == tipo)
+				.collect(Collectors.toList());
 	}
 
 	public List<Casetta> getCasette() {

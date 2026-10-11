@@ -1,5 +1,9 @@
 server:
   port: 8080
+  servlet:
+    session:
+      # evita il ;jsessionid=... negli URL dei redirect (Spring 6 risponderebbe 404)
+      tracking-modes: cookie
 
 spring:
   jpa:
