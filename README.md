@@ -230,8 +230,3 @@ La CI di GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
 - Tabellone e prezzi delle proprietà (edizione in euro): https://it.wikipedia.org/wiki/Monopoly
 - Imprevisti e Probabilità: https://answerprime.com/monopoli-elenco-imprevisti-probabilita10pt-2/
 - Contratti: https://it.scribd.com/document/327938771/Contratti-Monopoli
-
----
-
-Il repository contiene anche **CustomScraper**, un modulo separato e indipendente dal gioco
-(navigazione di siti, estrazione e matching di prodotti): vedi [CUSTOM_SCRAPER.md](CUSTOM_SCRAPER.md).

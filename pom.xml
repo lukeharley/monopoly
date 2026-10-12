@@ -19,8 +19,6 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>17</java.version>
-    <!-- Nel progetto ci sono due classi @SpringBootApplication: si avvia il Monopoly -->
-    <start-class>com.luca.monopoly.Application</start-class>
   </properties>
 
   <repositories>
