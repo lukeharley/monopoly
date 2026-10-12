@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.function.LongToIntFunction;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,18 +15,20 @@ import static org.junit.jupiter.api.Assertions.*;
  * caso (comprare, rifiutare, offrire, costruire, ipotecare, uscire di prigione...)
  * e dopo ogni mossa verifica le invarianti del gioco. Le mosse rifiutate con
  * {@link MossaNonValidaException} sono ammesse; qualsiasi altra eccezione o
- * invariante violata fa fallire il test indicando il seme della partita.
+ * invariante violata viene annotata con il seme della partita e fa fallire il
+ * test alla fine della campagna.
  */
 class SimulazionePartiteTest {
 
 	private static final int PARTITE = Integer.getInteger("simulazione.partite", 300);
+	private static final int AVANZAMENTO = Integer.getInteger("simulazione.avanzamento", 0);
 	private static final int MAX_MOSSE = 20_000;
 
 	@Test
 	void le_partite_casuali_da_2_a_8_giocatori_rispettano_le_regole() {
-		for (long seme = 1; seme <= PARTITE; seme++) {
-			gioca(seme, 2 + (int) (seme % 7));
-		}
+		List<String> anomalie = new ArrayList<>();
+		campagna("2-8 giocatori", seme -> 2 + (int) (seme % 7), anomalie);
+		assertTrue(anomalie.isEmpty(), anomalie.size() + " anomalie:\n" + String.join("\n", anomalie));
 	}
 
 	/**
@@ -35,13 +38,38 @@ class SimulazionePartiteTest {
 	 */
 	@Test
 	void in_due_quasi_tutte_le_partite_finiscono_con_un_vincitore() {
+		List<String> anomalie = new ArrayList<>();
+		int concluse = campagna("2 giocatori", seme -> 2, anomalie);
+		assertTrue(anomalie.isEmpty(), anomalie.size() + " anomalie:\n" + String.join("\n", anomalie));
+		assertTrue(concluse >= PARTITE * 8 / 10, "Partite concluse con un vincitore: " + concluse + "/" + PARTITE);
+	}
+
+	/**
+	 * Gioca {@link #PARTITE} partite senza fermarsi alla prima anomalia, che viene
+	 * annotata con il suo seme. Con -Dsimulazione.avanzamento=N stampa il
+	 * progresso ogni N partite.
+	 *
+	 * @return le partite concluse con un vincitore
+	 */
+	private int campagna(String nome, LongToIntFunction giocatoriPerSeme, List<String> anomalie) {
 		int concluse = 0;
 		for (long seme = 1; seme <= PARTITE; seme++) {
-			if (gioca(seme, 2)) {
-				concluse++;
+			try {
+				if (gioca(seme, giocatoriPerSeme.applyAsInt(seme))) {
+					concluse++;
+				}
+			} catch (AssertionError anomalia) {
+				anomalie.add(anomalia.getMessage());
+				if (AVANZAMENTO > 0) {
+					System.out.println("[simulazione " + nome + "] ANOMALIA: " + anomalia.getMessage());
+				}
+			}
+			if (AVANZAMENTO > 0 && (seme % AVANZAMENTO == 0 || seme == PARTITE)) {
+				System.out.printf("[simulazione %s] %d/%d partite, %d rimanenti, %d concluse con un vincitore, %d anomalie%n",
+						nome, seme, PARTITE, PARTITE - seme, concluse, anomalie.size());
 			}
 		}
-		assertTrue(concluse >= PARTITE * 8 / 10, "Partite concluse con un vincitore: " + concluse + "/" + PARTITE);
+		return concluse;
 	}
 
 	/** @return true se la partita si è conclusa con un vincitore entro {@link #MAX_MOSSE} */
